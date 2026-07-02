@@ -1,0 +1,72 @@
+import { Atom } from "./Atom.js";
+import { Bond } from "./Bond.js";
+import { vec3 } from "../math/vec3.js";
+
+export class Lattice {
+  constructor(config) {
+    this.rebuild(config);
+  }
+
+  rebuild(config) {
+    this.width = config.width;
+    this.height = config.height;
+    this.depth = config.depth;
+    this.restLength = config.restLength;
+    this.atoms = [];
+    this.bonds = [];
+
+    const offsetX = (this.width - 1) * this.restLength * 0.5;
+    const offsetY = (this.height - 1) * this.restLength * 0.5;
+    const offsetZ = (this.depth - 1) * this.restLength * 0.5;
+
+    for (let z = 0; z < this.depth; z += 1) {
+      for (let y = 0; y < this.height; y += 1) {
+        for (let x = 0; x < this.width; x += 1) {
+          const id = this.index(x, y, z);
+          const position = vec3(
+            x * this.restLength - offsetX,
+            y * this.restLength - offsetY,
+            z * this.restLength - offsetZ,
+          );
+          this.atoms.push(new Atom(id, position, this.isCorner(x, y, z)));
+        }
+      }
+    }
+
+    this.connectNeighbors();
+  }
+
+  index(x, y, z) {
+    return x + y * this.width + z * this.width * this.height;
+  }
+
+  atomAt(x, y, z) {
+    return this.atoms[this.index(x, y, z)];
+  }
+
+  isCorner(x, y, z) {
+    const onX = x === 0 || x === this.width - 1;
+    const onY = y === 0 || y === this.height - 1;
+    const onZ = z === 0 || z === this.depth - 1;
+    return onX && onY && onZ;
+  }
+
+  connectNeighbors() {
+    for (let z = 0; z < this.depth; z += 1) {
+      for (let y = 0; y < this.height; y += 1) {
+        for (let x = 0; x < this.width; x += 1) {
+          const atom = this.atomAt(x, y, z);
+          if (x + 1 < this.width) this.bonds.push(new Bond(atom, this.atomAt(x + 1, y, z), this.restLength));
+          if (y + 1 < this.height) this.bonds.push(new Bond(atom, this.atomAt(x, y + 1, z), this.restLength));
+          if (z + 1 < this.depth) this.bonds.push(new Bond(atom, this.atomAt(x, y, z + 1), this.restLength));
+        }
+      }
+    }
+  }
+
+  reset() {
+    for (const atom of this.atoms) {
+      atom.reset();
+    }
+  }
+}

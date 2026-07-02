@@ -1,0 +1,61 @@
+import { readNumber } from "../config.js";
+
+export class ControlPanel {
+  constructor(config, handlers) {
+    this.config = config;
+    this.handlers = handlers;
+    this.ids = {
+      width: "widthInput",
+      height: "heightInput",
+      depth: "depthInput",
+      restLength: "restLengthInput",
+      atomRadius: "atomRadiusInput",
+      stiffness: "stiffnessInput",
+      damping: "dampingInput",
+      iterations: "iterationsInput",
+    };
+    this.bind();
+    this.write();
+  }
+
+  bind() {
+    for (const [key, id] of Object.entries(this.ids)) {
+      const input = document.getElementById(id);
+      input.addEventListener("input", () => {
+        this.read();
+        if (["width", "height", "depth", "restLength"].includes(key)) {
+          this.handlers.onRebuild();
+        } else {
+          this.handlers.onConfigure();
+        }
+      });
+    }
+
+    document.getElementById("resetButton").addEventListener("click", this.handlers.onReset);
+    document.getElementById("rebuildButton").addEventListener("click", () => {
+      this.read();
+      this.handlers.onRebuild();
+    });
+    document.getElementById("pauseButton").addEventListener("click", (event) => {
+      const paused = this.handlers.onTogglePause();
+      event.currentTarget.textContent = paused ? "Resume" : "Pause";
+    });
+  }
+
+  write() {
+    for (const [key, id] of Object.entries(this.ids)) {
+      document.getElementById(id).value = this.config[key];
+    }
+  }
+
+  read() {
+    this.config.width = Math.round(readNumber(document.getElementById(this.ids.width).value, this.config.width, 2, 14));
+    this.config.height = Math.round(readNumber(document.getElementById(this.ids.height).value, this.config.height, 2, 14));
+    this.config.depth = Math.round(readNumber(document.getElementById(this.ids.depth).value, this.config.depth, 2, 14));
+    this.config.restLength = readNumber(document.getElementById(this.ids.restLength).value, this.config.restLength, 24, 120);
+    this.config.atomRadius = readNumber(document.getElementById(this.ids.atomRadius).value, this.config.atomRadius, 3, 18);
+    this.config.stiffness = readNumber(document.getElementById(this.ids.stiffness).value, this.config.stiffness, 0.05, 1);
+    this.config.damping = readNumber(document.getElementById(this.ids.damping).value, this.config.damping, 0.85, 0.999);
+    this.config.iterations = Math.round(readNumber(document.getElementById(this.ids.iterations).value, this.config.iterations, 1, 20));
+  }
+}

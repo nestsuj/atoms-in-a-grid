@@ -1,0 +1,45 @@
+import { clamp } from "../config.js";
+import { vec3 } from "./vec3.js";
+
+export class Camera {
+  constructor(config) {
+    this.rotationX = -0.62;
+    this.rotationY = 0.72;
+    this.zoom = 1;
+    this.minZoom = config.minZoom;
+    this.maxZoom = config.maxZoom;
+    this.center = { x: 0, y: 0 };
+  }
+
+  resize(width, height) {
+    this.center.x = width / 2;
+    this.center.y = height / 2;
+  }
+
+  orbit(deltaX, deltaY) {
+    this.rotationY += deltaX * 0.008;
+    this.rotationX = clamp(this.rotationX + deltaY * 0.008, -Math.PI * 0.48, Math.PI * 0.48);
+  }
+
+  setZoom(zoom) {
+    this.zoom = clamp(zoom, this.minZoom, this.maxZoom);
+  }
+
+  zoomBy(delta) {
+    const factor = Math.exp(-delta * 0.0012);
+    this.setZoom(this.zoom * factor);
+  }
+
+  getBasis() {
+    const cosY = Math.cos(this.rotationY);
+    const sinY = Math.sin(this.rotationY);
+    const cosX = Math.cos(this.rotationX);
+    const sinX = Math.sin(this.rotationX);
+
+    const right = vec3(cosY, 0, -sinY);
+    const up = vec3(sinY * sinX, cosX, cosY * sinX);
+    const forward = vec3(sinY * cosX, -sinX, cosY * cosX);
+
+    return { right, up, forward };
+  }
+}

@@ -1,0 +1,140 @@
+:root {
+  color-scheme: dark;
+  --bg: #111318;
+  --panel: #1b2028;
+  --panel-border: #303844;
+  --text: #e9edf2;
+  --muted: #aeb8c6;
+  --accent: #4ecdc4;
+  --button: #2a3340;
+  --button-hover: #364252;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  width: 100vw;
+  height: 100vh;
+}
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+  background: #151922;
+}
+
+#scene.is-dragging {
+  cursor: grabbing;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  padding: 18px;
+  border-left: 1px solid var(--panel-border);
+  background: var(--panel);
+  box-shadow: -8px 0 24px rgb(0 0 0 / 18%);
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.control-grid {
+  display: grid;
+  gap: 12px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: #111720;
+  color: var(--text);
+}
+
+input[type="range"] {
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+button {
+  min-height: 36px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: var(--button);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--button-hover);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .panel {
+    max-height: 44vh;
+    overflow: auto;
+    border-left: 0;
+    border-top: 1px solid var(--panel-border);
+  }
+
+  .control-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
