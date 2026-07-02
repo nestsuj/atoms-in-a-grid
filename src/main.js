@@ -10,6 +10,7 @@ const pointer = new window.Atoms.PointerController(canvas);
 const orbit = new window.Atoms.OrbitController(camera);
 const drag = new window.Atoms.DragController(canvas, lattice, solver, camera, config);
 let paused = false;
+let frame = 0;
 
 function configureRuntime() {
   solver.configure(config);
@@ -118,12 +119,15 @@ canvas.addEventListener("wheel", (event) => {
 function animate() {
   requestAnimationFrame(animate);
   configureRuntime();
+  frame += 1;
 
   if (!paused) {
     solver.step(lattice);
   }
 
-  energy.update(lattice);
+  if (frame % config.energyUpdateRate === 0) {
+    energy.update(lattice);
+  }
   renderer.render(lattice, camera);
 }
 

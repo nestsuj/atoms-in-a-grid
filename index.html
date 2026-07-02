@@ -97,11 +97,37 @@
         <details class="panel-section" open>
           <summary>Display</summary>
           <p>Tubes show bond strain: warm means stretched, cool means compressed. Atoms show accumulated local energy more softly.</p>
+          <label>
+            Energy update every
+            <input id="energyUpdateRateInput" type="number" min="1" max="10" step="1">
+            <span>Frames between energy color updates. 1 is smoothest; higher values are cheaper.</span>
+          </label>
           <label class="checkbox-control">
             <input id="fastLargeGridAtomsInput" type="checkbox">
             <span class="checkbox-text">
               Fast large-grid atoms
               <small>Uses simpler atom shading above 1,200 atoms. Faster, but less spherical-looking.</small>
+            </span>
+          </label>
+          <label class="checkbox-control">
+            <input id="sortBondsInput" type="checkbox">
+            <span class="checkbox-text">
+              Sort bonds
+              <small>Depth-sorts tubes every frame. Better layering, slower on large grids.</small>
+            </span>
+          </label>
+          <label class="checkbox-control">
+            <input id="sortAtomsInput" type="checkbox">
+            <span class="checkbox-text">
+              Sort atoms
+              <small>Depth-sorts spheres every frame. Better overlap, slower on large grids.</small>
+            </span>
+          </label>
+          <label class="checkbox-control">
+            <input id="simpleBondColorsInput" type="checkbox">
+            <span class="checkbox-text">
+              Simple bond colors
+              <small>Draws neutral depth-colored tubes and skips per-bond strain coloring.</small>
             </span>
           </label>
         </details>

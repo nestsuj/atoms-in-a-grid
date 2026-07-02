@@ -17,6 +17,10 @@ window.Atoms.ControlPanel = class ControlPanel {
       iterations: "iterationsInput",
       fastBending: "fastBendingInput",
       fastLargeGridAtoms: "fastLargeGridAtomsInput",
+      sortBonds: "sortBondsInput",
+      sortAtoms: "sortAtomsInput",
+      simpleBondColors: "simpleBondColorsInput",
+      energyUpdateRate: "energyUpdateRateInput",
     };
     this.bind();
     this.write();
@@ -66,5 +70,9 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.iterations = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.iterations).value, this.config.iterations, 1, 20));
     this.config.fastBending = document.getElementById(this.ids.fastBending).checked;
     this.config.fastLargeGridAtoms = document.getElementById(this.ids.fastLargeGridAtoms).checked;
+    this.config.sortBonds = document.getElementById(this.ids.sortBonds).checked;
+    this.config.sortAtoms = document.getElementById(this.ids.sortAtoms).checked;
+    this.config.simpleBondColors = document.getElementById(this.ids.simpleBondColors).checked;
+    this.config.energyUpdateRate = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.energyUpdateRate).value, this.config.energyUpdateRate, 1, 10));
   }
 };

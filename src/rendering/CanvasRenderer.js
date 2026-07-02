@@ -56,7 +56,9 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
 
     const depthRange = Math.max(1, maxDepth - minDepth);
     const bondEntries = this.prepareBondEntries(lattice, projectedAtoms);
-    bondEntries.sort((a, b) => a.depth - b.depth);
+    if (this.config.sortBonds) {
+      bondEntries.sort((a, b) => a.depth - b.depth);
+    }
 
     ctx.lineCap = "round";
     for (const entry of bondEntries) {
@@ -64,7 +66,9 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       this.drawBond(ctx, entry, depthShade);
     }
 
-    projectedAtoms.sort((a, b) => a.screen.depth - b.screen.depth);
+    if (this.config.sortAtoms) {
+      projectedAtoms.sort((a, b) => a.screen.depth - b.screen.depth);
+    }
     const simpleAtoms = this.config.fastLargeGridAtoms && lattice.atoms.length > 1200;
     for (const entry of projectedAtoms) {
       const depthShade = (entry.screen.depth - minDepth) / depthRange;
@@ -98,9 +102,10 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       const bond = bonds[i];
       const a = projectedAtoms[bond.a.id].screen;
       const b = projectedAtoms[bond.b.id].screen;
-      const deltaX = bond.b.position.x - bond.a.position.x;
-      const deltaY = bond.b.position.y - bond.a.position.y;
-      const deltaZ = bond.b.position.z - bond.a.position.z;
+      const needsStrain = !this.config.simpleBondColors;
+      const deltaX = needsStrain ? bond.b.position.x - bond.a.position.x : 0;
+      const deltaY = needsStrain ? bond.b.position.y - bond.a.position.y : 0;
+      const deltaZ = needsStrain ? bond.b.position.z - bond.a.position.z : 0;
       let entry = this.bondEntries[i];
 
       if (!entry) {
@@ -112,7 +117,9 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       entry.a = a;
       entry.b = b;
       entry.depth = (a.depth + b.depth) * 0.5;
-      entry.strain = (Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ) - bond.restLength) / bond.restLength;
+      entry.strain = needsStrain
+        ? (Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ) - bond.restLength) / bond.restLength
+        : 0;
     }
 
     return this.bondEntries;
@@ -130,10 +137,12 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     ctx.beginPath();
     ctx.moveTo(entry.a.x, entry.a.y);
     ctx.lineTo(entry.b.x, entry.b.y);
-    const rawStrain = Math.min(1, Math.abs(entry.strain) * 2.2);
+    const rawStrain = this.config.simpleBondColors ? 0 : Math.min(1, Math.abs(entry.strain) * 2.2);
     const strain = rawStrain * rawStrain * (3 - 2 * rawStrain);
     ctx.lineWidth = 1.8 + depthShade * 2.1 + strain * 2.7;
-    ctx.strokeStyle = window.Atoms.bondColor(depthShade, entry.strain);
+    ctx.strokeStyle = this.config.simpleBondColors
+      ? window.Atoms.neutralBondColor(depthShade)
+      : window.Atoms.bondColor(depthShade, entry.strain);
     ctx.stroke();
   }
 

@@ -32,3 +32,9 @@ window.Atoms.bondColor = function bondColor(depthShade, strain) {
   const alpha = 0.28 + depthShade * 0.24 + amount * 0.34;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
+
+window.Atoms.neutralBondColor = function neutralBondColor(depthShade) {
+  const value = Math.round(126 + depthShade * 42);
+  const alpha = 0.28 + depthShade * 0.24;
+  return `rgba(${value}, ${value + 13}, ${value + 30}, ${alpha})`;
+};
