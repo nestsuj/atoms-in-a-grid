@@ -11,6 +11,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.stiffness = config.stiffness;
     this.bendStiffness = config.bendStiffness;
     this.releaseEnergy = config.releaseEnergy;
+    this.dragStrength = config.dragStrength;
     this.gravity = config.gravityEnabled ? config.gravityStrength : 0;
     this.iterations = config.iterations;
     this.bendCadence = config.fastBending ? 2 : 1;
@@ -24,8 +25,10 @@ window.Atoms.VerletSolver = class VerletSolver {
       velocity: window.Atoms.vec3(),
     });
     atom.selected = true;
-    window.Atoms.copy(atom.position, position);
-    window.Atoms.copy(atom.previousPosition, position);
+    if (this.isHardGrab()) {
+      window.Atoms.copy(atom.position, position);
+      window.Atoms.copy(atom.previousPosition, position);
+    }
   }
 
   movePin(atom, position) {
@@ -40,7 +43,9 @@ window.Atoms.VerletSolver = class VerletSolver {
     pin.velocity.x = pin.current.x - pin.previous.x;
     pin.velocity.y = pin.current.y - pin.previous.y;
     pin.velocity.z = pin.current.z - pin.previous.z;
-    window.Atoms.copy(atom.position, position);
+    if (this.isHardGrab()) {
+      window.Atoms.copy(atom.position, position);
+    }
   }
 
   release(atom) {
@@ -53,9 +58,11 @@ window.Atoms.VerletSolver = class VerletSolver {
       return;
     }
 
-    atom.previousPosition.x = atom.position.x - pin.velocity.x * this.releaseEnergy;
-    atom.previousPosition.y = atom.position.y - pin.velocity.y * this.releaseEnergy;
-    atom.previousPosition.z = atom.position.z - pin.velocity.z * this.releaseEnergy;
+    if (this.isHardGrab()) {
+      atom.previousPosition.x = atom.position.x - pin.velocity.x * this.releaseEnergy;
+      atom.previousPosition.y = atom.position.y - pin.velocity.y * this.releaseEnergy;
+      atom.previousPosition.z = atom.position.z - pin.velocity.z * this.releaseEnergy;
+    }
   }
 
   step(lattice) {
@@ -64,7 +71,7 @@ window.Atoms.VerletSolver = class VerletSolver {
       if (atom.fixed) {
         window.Atoms.copy(atom.position, atom.restPosition);
         window.Atoms.copy(atom.previousPosition, atom.restPosition);
-      } else if (pinned) {
+      } else if (pinned && this.isHardGrab()) {
         window.Atoms.copy(atom.position, pinned.current);
         atom.previousPosition.x = pinned.current.x - pinned.velocity.x;
         atom.previousPosition.y = pinned.current.y - pinned.velocity.y;
@@ -82,6 +89,15 @@ window.Atoms.VerletSolver = class VerletSolver {
         atom.previousPosition.x = x;
         atom.previousPosition.y = y;
         atom.previousPosition.z = z;
+
+        if (pinned) {
+          atom.position.x += (pinned.current.x - atom.position.x) * this.dragStrength;
+          atom.position.y += (pinned.current.y - atom.position.y) * this.dragStrength;
+          atom.position.z += (pinned.current.z - atom.position.z) * this.dragStrength;
+          pinned.velocity.x *= 0.86;
+          pinned.velocity.y *= 0.86;
+          pinned.velocity.z *= 0.86;
+        }
       }
     }
 
@@ -110,8 +126,8 @@ window.Atoms.VerletSolver = class VerletSolver {
       const correctionX = deltaX * difference * stiffness;
       const correctionY = deltaY * difference * stiffness;
       const correctionZ = deltaZ * difference * stiffness;
-      const aLocked = a.fixed || this.pinned.has(a.id);
-      const bLocked = b.fixed || this.pinned.has(b.id);
+      const aLocked = a.fixed || this.isHardPinned(a);
+      const bLocked = b.fixed || this.isHardPinned(b);
 
       if (!aLocked && !bLocked) {
         a.position.x += correctionX * 0.5;
@@ -137,9 +153,17 @@ window.Atoms.VerletSolver = class VerletSolver {
       const pinned = this.pinned.get(atom.id);
       if (atom.fixed) {
         window.Atoms.copy(atom.position, atom.restPosition);
-      } else if (pinned) {
+      } else if (pinned && this.isHardGrab()) {
         window.Atoms.copy(atom.position, pinned.current);
       }
     }
+  }
+
+  isHardGrab() {
+    return this.dragStrength >= 0.995;
+  }
+
+  isHardPinned(atom) {
+    return this.isHardGrab() && this.pinned.has(atom.id);
   }
 };

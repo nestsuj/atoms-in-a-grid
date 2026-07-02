@@ -13,6 +13,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       stiffness: "stiffnessInput",
       bendStiffness: "bendStiffnessInput",
       releaseEnergy: "releaseEnergyInput",
+      dragStrength: "dragStrengthInput",
       gravityEnabled: "gravityEnabledInput",
       gravityStrength: "gravityStrengthInput",
       damping: "dampingInput",
@@ -68,6 +69,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.stiffness = window.Atoms.readNumber(document.getElementById(this.ids.stiffness).value, this.config.stiffness, 0.02, 1);
     this.config.bendStiffness = window.Atoms.readNumber(document.getElementById(this.ids.bendStiffness).value, this.config.bendStiffness, 0, 1);
     this.config.releaseEnergy = window.Atoms.readNumber(document.getElementById(this.ids.releaseEnergy).value, this.config.releaseEnergy, 0, 1.5);
+    this.config.dragStrength = window.Atoms.readNumber(document.getElementById(this.ids.dragStrength).value, this.config.dragStrength, 0.02, 1);
     this.config.gravityEnabled = document.getElementById(this.ids.gravityEnabled).checked;
     this.config.gravityStrength = window.Atoms.readNumber(document.getElementById(this.ids.gravityStrength).value, this.config.gravityStrength, 0, 1.5);
     this.config.damping = window.Atoms.readNumber(document.getElementById(this.ids.damping).value, this.config.damping, 0.9, 0.9995);
