@@ -51,9 +51,9 @@ body {
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
   min-width: 0;
-  padding: 18px;
+  padding: 14px;
   overflow: auto;
   border-left: 1px solid var(--panel-border);
   background: var(--panel);
@@ -69,31 +69,36 @@ body {
 
 h1 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.2;
   font-weight: 700;
 }
 
 .control-grid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
-.help {
+.panel-section {
   display: grid;
-  gap: 6px;
-  padding-bottom: 4px;
+  gap: 10px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--panel-border);
 }
 
-.help h2 {
-  margin: 0;
+.panel-section summary {
   color: var(--text);
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 700;
   line-height: 1.2;
+  cursor: pointer;
 }
 
-.help p {
+.panel-section summary::marker {
+  color: var(--accent);
+}
+
+.panel-section p {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
@@ -102,7 +107,7 @@ h1 {
 
 label {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   color: var(--muted);
   font-size: 13px;
 }
@@ -115,7 +120,7 @@ label span {
 
 input {
   width: 100%;
-  min-height: 34px;
+  min-height: 32px;
   border: 1px solid var(--panel-border);
   border-radius: 6px;
   padding: 6px 8px;
@@ -129,7 +134,7 @@ input[type="range"] {
 }
 
 button {
-  min-height: 36px;
+  min-height: 34px;
   border: 1px solid var(--panel-border);
   border-radius: 6px;
   padding: 0 12px;
@@ -147,26 +152,53 @@ button:hover {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  position: sticky;
+  bottom: -14px;
+  padding-top: 4px;
+  padding-bottom: 14px;
+  background: var(--panel);
+}
+
+@media (max-height: 760px) and (min-width: 761px) {
+  .panel-section:not([open]) {
+    padding-bottom: 8px;
+  }
+
+  .panel-section p,
+  label span {
+    display: none;
+  }
+
+  .control-grid {
+    gap: 8px;
+  }
 }
 
 @media (max-width: 760px) {
   .app {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) minmax(180px, 38vh);
   }
 
   .panel {
-    max-height: 44vh;
+    min-height: 0;
     overflow: auto;
     border-left: 0;
     border-top: 1px solid var(--panel-border);
   }
 
   .control-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
   }
 
+  .panel-section p,
   label span {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .control-grid {
+    grid-template-columns: 1fr;
   }
 }

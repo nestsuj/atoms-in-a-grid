@@ -56,7 +56,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       a: atomById.get(bond.a.id).screen,
       b: atomById.get(bond.b.id).screen,
       depth: (atomById.get(bond.a.id).screen.depth + atomById.get(bond.b.id).screen.depth) * 0.5,
-      energy: (bond.a.energy + bond.b.energy) * 0.5,
+      strain: (window.Atoms.distance(bond.a.position, bond.b.position) - bond.restLength) / bond.restLength,
     })).sort((a, b) => a.depth - b.depth);
 
     for (const entry of bondEntries) {
@@ -83,9 +83,10 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     ctx.beginPath();
     ctx.moveTo(entry.a.x, entry.a.y);
     ctx.lineTo(entry.b.x, entry.b.y);
-    ctx.lineWidth = 2.2 + depthShade * 2.4 + entry.energy * 2;
+    const strain = Math.min(1, Math.abs(entry.strain) * 5);
+    ctx.lineWidth = 1.8 + depthShade * 2.1 + strain * 3.2;
     ctx.lineCap = "round";
-    ctx.strokeStyle = window.Atoms.bondColor(depthShade, entry.energy);
+    ctx.strokeStyle = window.Atoms.bondColor(depthShade, entry.strain);
     ctx.stroke();
   }
 
