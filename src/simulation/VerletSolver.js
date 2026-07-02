@@ -10,25 +10,49 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.damping = config.damping;
     this.stiffness = config.stiffness;
     this.bendStiffness = config.bendStiffness;
+    this.releaseEnergy = config.releaseEnergy;
     this.iterations = config.iterations;
   }
 
   pin(atom, position) {
-    this.pinned.set(atom.id, position);
+    this.pinned.set(atom.id, {
+      current: window.Atoms.clone(position),
+      previous: window.Atoms.clone(position),
+      velocity: window.Atoms.vec3(),
+    });
     atom.selected = true;
     window.Atoms.copy(atom.position, position);
     window.Atoms.copy(atom.previousPosition, position);
   }
 
   movePin(atom, position) {
-    this.pinned.set(atom.id, position);
+    const pin = this.pinned.get(atom.id);
+    if (!pin) {
+      this.pin(atom, position);
+      return;
+    }
+
+    window.Atoms.copy(pin.previous, pin.current);
+    window.Atoms.copy(pin.current, position);
+    pin.velocity.x = pin.current.x - pin.previous.x;
+    pin.velocity.y = pin.current.y - pin.previous.y;
+    pin.velocity.z = pin.current.z - pin.previous.z;
     window.Atoms.copy(atom.position, position);
   }
 
   release(atom) {
+    const pin = this.pinned.get(atom.id);
     this.pinned.delete(atom.id);
     atom.selected = false;
-    window.Atoms.copy(atom.previousPosition, atom.position);
+
+    if (!pin) {
+      window.Atoms.copy(atom.previousPosition, atom.position);
+      return;
+    }
+
+    atom.previousPosition.x = atom.position.x - pin.velocity.x * this.releaseEnergy;
+    atom.previousPosition.y = atom.position.y - pin.velocity.y * this.releaseEnergy;
+    atom.previousPosition.z = atom.position.z - pin.velocity.z * this.releaseEnergy;
   }
 
   step(lattice) {
@@ -38,8 +62,13 @@ window.Atoms.VerletSolver = class VerletSolver {
         window.Atoms.copy(atom.position, atom.restPosition);
         window.Atoms.copy(atom.previousPosition, atom.restPosition);
       } else if (pinned) {
-        window.Atoms.copy(atom.position, pinned);
-        window.Atoms.copy(atom.previousPosition, pinned);
+        window.Atoms.copy(atom.position, pinned.current);
+        atom.previousPosition.x = pinned.current.x - pinned.velocity.x;
+        atom.previousPosition.y = pinned.current.y - pinned.velocity.y;
+        atom.previousPosition.z = pinned.current.z - pinned.velocity.z;
+        pinned.velocity.x *= 0.86;
+        pinned.velocity.y *= 0.86;
+        pinned.velocity.z *= 0.86;
       } else {
         const x = atom.position.x;
         const y = atom.position.y;
@@ -104,7 +133,7 @@ window.Atoms.VerletSolver = class VerletSolver {
       if (atom.fixed) {
         window.Atoms.copy(atom.position, atom.restPosition);
       } else if (pinned) {
-        window.Atoms.copy(atom.position, pinned);
+        window.Atoms.copy(atom.position, pinned.current);
       }
     }
   }
