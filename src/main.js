@@ -55,13 +55,15 @@ canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 canvas.addEventListener("pointerdown", (event) => {
   canvas.setPointerCapture(event.pointerId);
   const point = pointer.getPoint(event);
-  const wantsOrbit = event.button === 1 || event.button === 2 || event.shiftKey || event.altKey;
+  const wantsOrbit = event.button === 1 || event.button === 2;
 
   if (!wantsOrbit && drag.begin(point)) {
     return;
   }
 
-  orbit.begin(point);
+  if (wantsOrbit) {
+    orbit.begin(point);
+  }
 });
 
 canvas.addEventListener("pointermove", (event) => {
