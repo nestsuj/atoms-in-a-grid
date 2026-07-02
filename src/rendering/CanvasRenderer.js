@@ -83,8 +83,9 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     ctx.beginPath();
     ctx.moveTo(entry.a.x, entry.a.y);
     ctx.lineTo(entry.b.x, entry.b.y);
-    const strain = Math.min(1, Math.abs(entry.strain) * 5);
-    ctx.lineWidth = 1.8 + depthShade * 2.1 + strain * 3.2;
+    const rawStrain = Math.min(1, Math.abs(entry.strain) * 2.2);
+    const strain = rawStrain * rawStrain * (3 - 2 * rawStrain);
+    ctx.lineWidth = 1.8 + depthShade * 2.1 + strain * 2.7;
     ctx.lineCap = "round";
     ctx.strokeStyle = window.Atoms.bondColor(depthShade, entry.strain);
     ctx.stroke();

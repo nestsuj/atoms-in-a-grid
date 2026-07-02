@@ -53,7 +53,7 @@ body {
   flex-direction: column;
   gap: 10px;
   min-width: 0;
-  padding: 14px;
+  padding: 14px 14px 0;
   overflow: auto;
   border-left: 1px solid var(--panel-border);
   background: var(--panel);
@@ -153,10 +153,11 @@ button:hover {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   position: sticky;
-  bottom: -14px;
-  padding-top: 4px;
-  padding-bottom: 14px;
+  bottom: 0;
+  margin: 0 -14px;
+  padding: 8px 14px 14px;
   background: var(--panel);
+  border-top: 1px solid var(--panel-border);
 }
 
 @media (max-height: 760px) and (min-width: 761px) {
@@ -182,6 +183,7 @@ button:hover {
 
   .panel {
     min-height: 0;
+    padding-bottom: 0;
     overflow: auto;
     border-left: 0;
     border-top: 1px solid var(--panel-border);

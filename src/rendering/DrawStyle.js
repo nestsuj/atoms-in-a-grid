@@ -16,7 +16,8 @@ window.Atoms.atomColor = function atomColor(atom, depthShade) {
 };
 
 window.Atoms.bondColor = function bondColor(depthShade, strain) {
-  const amount = window.Atoms.clamp(Math.abs(strain) * 5, 0, 1);
+  const rawAmount = window.Atoms.clamp(Math.abs(strain) * 2.2, 0, 1);
+  const amount = rawAmount * rawAmount * (3 - 2 * rawAmount);
   const neutral = {
     r: 126 + depthShade * 42,
     g: 139 + depthShade * 42,
@@ -28,6 +29,6 @@ window.Atoms.bondColor = function bondColor(depthShade, strain) {
   const r = Math.round(neutral.r + (target.r - neutral.r) * amount);
   const g = Math.round(neutral.g + (target.g - neutral.g) * amount);
   const b = Math.round(neutral.b + (target.b - neutral.b) * amount);
-  const alpha = 0.32 + depthShade * 0.28 + amount * 0.32;
+  const alpha = 0.28 + depthShade * 0.24 + amount * 0.34;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
