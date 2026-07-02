@@ -1,7 +1,6 @@
-import { clamp } from "../config.js";
-import { vec3 } from "./vec3.js";
+window.Atoms = window.Atoms || {};
 
-export class Camera {
+window.Atoms.Camera = class Camera {
   constructor(config) {
     this.rotationX = -0.62;
     this.rotationY = 0.72;
@@ -18,11 +17,11 @@ export class Camera {
 
   orbit(deltaX, deltaY) {
     this.rotationY += deltaX * 0.008;
-    this.rotationX = clamp(this.rotationX + deltaY * 0.008, -Math.PI * 0.48, Math.PI * 0.48);
+    this.rotationX = window.Atoms.clamp(this.rotationX + deltaY * 0.008, -Math.PI * 0.48, Math.PI * 0.48);
   }
 
   setZoom(zoom) {
-    this.zoom = clamp(zoom, this.minZoom, this.maxZoom);
+    this.zoom = window.Atoms.clamp(zoom, this.minZoom, this.maxZoom);
   }
 
   zoomBy(delta) {
@@ -36,10 +35,10 @@ export class Camera {
     const cosX = Math.cos(this.rotationX);
     const sinX = Math.sin(this.rotationX);
 
-    const right = vec3(cosY, 0, -sinY);
-    const up = vec3(sinY * sinX, cosX, cosY * sinX);
-    const forward = vec3(sinY * cosX, -sinX, cosY * cosX);
+    const right = window.Atoms.vec3(cosY, 0, -sinY);
+    const up = window.Atoms.vec3(sinY * sinX, cosX, cosY * sinX);
+    const forward = window.Atoms.vec3(sinY * cosX, -sinX, cosY * cosX);
 
     return { right, up, forward };
   }
-}
+};

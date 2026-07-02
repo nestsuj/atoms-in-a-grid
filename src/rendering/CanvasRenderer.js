@@ -1,7 +1,6 @@
-import { project } from "../math/projection.js";
-import { atomColor, bondColor } from "./DrawStyle.js";
+window.Atoms = window.Atoms || {};
 
-export class CanvasRenderer {
+window.Atoms.CanvasRenderer = class CanvasRenderer {
   constructor(canvas, config) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
@@ -27,7 +26,7 @@ export class CanvasRenderer {
 
     const projectedAtoms = lattice.atoms.map((atom) => ({
       atom,
-      screen: project(atom.position, camera),
+      screen: window.Atoms.project(atom.position, camera),
     }));
     const atomById = new Map(projectedAtoms.map((entry) => [entry.atom.id, entry]));
 
@@ -69,7 +68,7 @@ export class CanvasRenderer {
     ctx.lineTo(entry.b.x, entry.b.y);
     ctx.lineWidth = 2.2 + depthShade * 2.4 + entry.energy * 2;
     ctx.lineCap = "round";
-    ctx.strokeStyle = bondColor(depthShade, entry.energy);
+    ctx.strokeStyle = window.Atoms.bondColor(depthShade, entry.energy);
     ctx.stroke();
   }
 
@@ -87,7 +86,7 @@ export class CanvasRenderer {
       radius,
     );
     gradient.addColorStop(0, atom.fixed ? "#ffffff" : "#efffff");
-    gradient.addColorStop(0.25, atomColor(atom, depthShade));
+    gradient.addColorStop(0.25, window.Atoms.atomColor(atom, depthShade));
     gradient.addColorStop(1, atom.selected ? "#fff0a6" : "#223041");
 
     ctx.beginPath();
@@ -101,4 +100,4 @@ export class CanvasRenderer {
       ctx.stroke();
     }
   }
-}
+};

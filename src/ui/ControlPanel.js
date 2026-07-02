@@ -1,6 +1,6 @@
-import { readNumber } from "../config.js";
+window.Atoms = window.Atoms || {};
 
-export class ControlPanel {
+window.Atoms.ControlPanel = class ControlPanel {
   constructor(config, handlers) {
     this.config = config;
     this.handlers = handlers;
@@ -49,13 +49,13 @@ export class ControlPanel {
   }
 
   read() {
-    this.config.width = Math.round(readNumber(document.getElementById(this.ids.width).value, this.config.width, 2, 14));
-    this.config.height = Math.round(readNumber(document.getElementById(this.ids.height).value, this.config.height, 2, 14));
-    this.config.depth = Math.round(readNumber(document.getElementById(this.ids.depth).value, this.config.depth, 2, 14));
-    this.config.restLength = readNumber(document.getElementById(this.ids.restLength).value, this.config.restLength, 24, 120);
-    this.config.atomRadius = readNumber(document.getElementById(this.ids.atomRadius).value, this.config.atomRadius, 3, 18);
-    this.config.stiffness = readNumber(document.getElementById(this.ids.stiffness).value, this.config.stiffness, 0.05, 1);
-    this.config.damping = readNumber(document.getElementById(this.ids.damping).value, this.config.damping, 0.85, 0.999);
-    this.config.iterations = Math.round(readNumber(document.getElementById(this.ids.iterations).value, this.config.iterations, 1, 20));
+    this.config.width = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.width).value, this.config.width, 2, 14));
+    this.config.height = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.height).value, this.config.height, 2, 14));
+    this.config.depth = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.depth).value, this.config.depth, 2, 14));
+    this.config.restLength = window.Atoms.readNumber(document.getElementById(this.ids.restLength).value, this.config.restLength, 24, 120);
+    this.config.atomRadius = window.Atoms.readNumber(document.getElementById(this.ids.atomRadius).value, this.config.atomRadius, 3, 18);
+    this.config.stiffness = window.Atoms.readNumber(document.getElementById(this.ids.stiffness).value, this.config.stiffness, 0.05, 1);
+    this.config.damping = window.Atoms.readNumber(document.getElementById(this.ids.damping).value, this.config.damping, 0.85, 0.999);
+    this.config.iterations = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.iterations).value, this.config.iterations, 1, 20));
   }
-}
+};

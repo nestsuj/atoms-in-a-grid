@@ -1,4 +1,6 @@
-export const defaultConfig = Object.freeze({
+window.Atoms = window.Atoms || {};
+
+window.Atoms.defaultConfig = Object.freeze({
   width: 7,
   height: 7,
   depth: 7,
@@ -12,14 +14,14 @@ export const defaultConfig = Object.freeze({
   maxZoom: 3.2,
 });
 
-export function clamp(value, min, max) {
+window.Atoms.clamp = function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
-}
+};
 
-export function readNumber(value, fallback, min, max) {
+window.Atoms.readNumber = function readNumber(value, fallback, min, max) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
     return fallback;
   }
-  return clamp(parsed, min, max);
-}
+  return window.Atoms.clamp(parsed, min, max);
+};

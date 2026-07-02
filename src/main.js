@@ -1,24 +1,13 @@
-import { defaultConfig } from "./config.js";
-import { Camera } from "./math/camera.js";
-import { Lattice } from "./simulation/Lattice.js";
-import { VerletSolver } from "./simulation/VerletSolver.js";
-import { EnergyModel } from "./simulation/EnergyModel.js";
-import { CanvasRenderer } from "./rendering/CanvasRenderer.js";
-import { PointerController } from "./input/PointerController.js";
-import { OrbitController } from "./input/OrbitController.js";
-import { DragController } from "./input/DragController.js";
-import { ControlPanel } from "./ui/ControlPanel.js";
-
 const canvas = document.getElementById("scene");
-const config = { ...defaultConfig, zoomVisualScale: 1 };
-const camera = new Camera(config);
-let lattice = new Lattice(config);
-const solver = new VerletSolver(config);
-const energy = new EnergyModel(config);
-const renderer = new CanvasRenderer(canvas, config);
-const pointer = new PointerController(canvas);
-const orbit = new OrbitController(camera);
-const drag = new DragController(canvas, lattice, solver, camera, config);
+const config = { ...window.Atoms.defaultConfig, zoomVisualScale: 1 };
+const camera = new window.Atoms.Camera(config);
+let lattice = new window.Atoms.Lattice(config);
+const solver = new window.Atoms.VerletSolver(config);
+const energy = new window.Atoms.EnergyModel(config);
+const renderer = new window.Atoms.CanvasRenderer(canvas, config);
+const pointer = new window.Atoms.PointerController(canvas);
+const orbit = new window.Atoms.OrbitController(camera);
+const drag = new window.Atoms.DragController(canvas, lattice, solver, camera, config);
 let paused = false;
 
 function configureRuntime() {
@@ -27,7 +16,7 @@ function configureRuntime() {
 }
 
 function rebuild() {
-  lattice = new Lattice(config);
+  lattice = new window.Atoms.Lattice(config);
   drag.setLattice(lattice);
   solver.pinned.clear();
   energy.update(lattice);
@@ -39,7 +28,7 @@ function reset() {
   lattice.reset();
 }
 
-new ControlPanel(config, {
+new window.Atoms.ControlPanel(config, {
   onConfigure: configureRuntime,
   onRebuild: rebuild,
   onReset: reset,

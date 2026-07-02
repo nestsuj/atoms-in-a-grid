@@ -1,7 +1,7 @@
-import { clamp } from "../config.js";
+window.Atoms = window.Atoms || {};
 
-export function atomColor(atom, depthShade) {
-  const energy = clamp(atom.energy, 0, 1);
+window.Atoms.atomColor = function atomColor(atom, depthShade) {
+  const energy = window.Atoms.clamp(atom.energy, 0, 1);
   const cool = {
     r: 70 + depthShade * 40,
     g: 180 + depthShade * 32,
@@ -13,9 +13,9 @@ export function atomColor(atom, depthShade) {
   const g = Math.round(cool.g + (hot.g - cool.g) * energy);
   const b = Math.round(cool.b + (hot.b - cool.b) * energy);
   return `rgb(${r}, ${g}, ${b})`;
-}
+};
 
-export function bondColor(depthShade, energy) {
-  const alpha = 0.28 + depthShade * 0.32 + clamp(energy, 0, 1) * 0.25;
+window.Atoms.bondColor = function bondColor(depthShade, energy) {
+  const alpha = 0.28 + depthShade * 0.32 + window.Atoms.clamp(energy, 0, 1) * 0.25;
   return `rgba(150, 166, 184, ${alpha})`;
-}
+};

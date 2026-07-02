@@ -1,7 +1,9 @@
-export class Bond {
+window.Atoms = window.Atoms || {};
+
+window.Atoms.Bond = class Bond {
   constructor(a, b, restLength) {
     this.a = a;
     this.b = b;
     this.restLength = restLength;
   }
-}
+};

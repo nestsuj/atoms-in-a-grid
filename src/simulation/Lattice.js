@@ -1,8 +1,6 @@
-import { Atom } from "./Atom.js";
-import { Bond } from "./Bond.js";
-import { vec3 } from "../math/vec3.js";
+window.Atoms = window.Atoms || {};
 
-export class Lattice {
+window.Atoms.Lattice = class Lattice {
   constructor(config) {
     this.rebuild(config);
   }
@@ -23,12 +21,12 @@ export class Lattice {
       for (let y = 0; y < this.height; y += 1) {
         for (let x = 0; x < this.width; x += 1) {
           const id = this.index(x, y, z);
-          const position = vec3(
+          const position = window.Atoms.vec3(
             x * this.restLength - offsetX,
             y * this.restLength - offsetY,
             z * this.restLength - offsetZ,
           );
-          this.atoms.push(new Atom(id, position, this.isCorner(x, y, z)));
+          this.atoms.push(new window.Atoms.Atom(id, position, this.isCorner(x, y, z)));
         }
       }
     }
@@ -56,9 +54,9 @@ export class Lattice {
       for (let y = 0; y < this.height; y += 1) {
         for (let x = 0; x < this.width; x += 1) {
           const atom = this.atomAt(x, y, z);
-          if (x + 1 < this.width) this.bonds.push(new Bond(atom, this.atomAt(x + 1, y, z), this.restLength));
-          if (y + 1 < this.height) this.bonds.push(new Bond(atom, this.atomAt(x, y + 1, z), this.restLength));
-          if (z + 1 < this.depth) this.bonds.push(new Bond(atom, this.atomAt(x, y, z + 1), this.restLength));
+          if (x + 1 < this.width) this.bonds.push(new window.Atoms.Bond(atom, this.atomAt(x + 1, y, z), this.restLength));
+          if (y + 1 < this.height) this.bonds.push(new window.Atoms.Bond(atom, this.atomAt(x, y + 1, z), this.restLength));
+          if (z + 1 < this.depth) this.bonds.push(new window.Atoms.Bond(atom, this.atomAt(x, y, z + 1), this.restLength));
         }
       }
     }
@@ -69,4 +67,4 @@ export class Lattice {
       atom.reset();
     }
   }
-}
+};

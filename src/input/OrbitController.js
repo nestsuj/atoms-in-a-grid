@@ -1,4 +1,6 @@
-export class OrbitController {
+window.Atoms = window.Atoms || {};
+
+window.Atoms.OrbitController = class OrbitController {
   constructor(camera) {
     this.camera = camera;
     this.active = false;
@@ -23,4 +25,4 @@ export class OrbitController {
   zoom(deltaY) {
     this.camera.zoomBy(deltaY);
   }
-}
+};

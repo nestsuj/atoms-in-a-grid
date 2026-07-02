@@ -1,6 +1,6 @@
-import { copy, distance } from "../math/vec3.js";
+window.Atoms = window.Atoms || {};
 
-export class VerletSolver {
+window.Atoms.VerletSolver = class VerletSolver {
   constructor(config) {
     this.configure(config);
     this.pinned = new Map();
@@ -15,30 +15,30 @@ export class VerletSolver {
   pin(atom, position) {
     this.pinned.set(atom.id, position);
     atom.selected = true;
-    copy(atom.position, position);
-    copy(atom.previousPosition, position);
+    window.Atoms.copy(atom.position, position);
+    window.Atoms.copy(atom.previousPosition, position);
   }
 
   movePin(atom, position) {
     this.pinned.set(atom.id, position);
-    copy(atom.position, position);
+    window.Atoms.copy(atom.position, position);
   }
 
   release(atom) {
     this.pinned.delete(atom.id);
     atom.selected = false;
-    copy(atom.previousPosition, atom.position);
+    window.Atoms.copy(atom.previousPosition, atom.position);
   }
 
   step(lattice) {
     for (const atom of lattice.atoms) {
       const pinned = this.pinned.get(atom.id);
       if (atom.fixed) {
-        copy(atom.position, atom.restPosition);
-        copy(atom.previousPosition, atom.restPosition);
+        window.Atoms.copy(atom.position, atom.restPosition);
+        window.Atoms.copy(atom.previousPosition, atom.restPosition);
       } else if (pinned) {
-        copy(atom.position, pinned);
-        copy(atom.previousPosition, pinned);
+        window.Atoms.copy(atom.position, pinned);
+        window.Atoms.copy(atom.previousPosition, pinned);
       } else {
         const x = atom.position.x;
         const y = atom.position.y;
@@ -65,7 +65,7 @@ export class VerletSolver {
       const deltaX = b.position.x - a.position.x;
       const deltaY = b.position.y - a.position.y;
       const deltaZ = b.position.z - a.position.z;
-      const currentLength = Math.max(distance(a.position, b.position), 0.0001);
+      const currentLength = Math.max(window.Atoms.distance(a.position, b.position), 0.0001);
       const difference = (currentLength - bond.restLength) / currentLength;
       const correctionX = deltaX * difference * this.stiffness;
       const correctionY = deltaY * difference * this.stiffness;
@@ -96,10 +96,10 @@ export class VerletSolver {
     for (const atom of lattice.atoms) {
       const pinned = this.pinned.get(atom.id);
       if (atom.fixed) {
-        copy(atom.position, atom.restPosition);
+        window.Atoms.copy(atom.position, atom.restPosition);
       } else if (pinned) {
-        copy(atom.position, pinned);
+        window.Atoms.copy(atom.position, pinned);
       }
     }
   }
-}
+};

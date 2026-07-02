@@ -1,6 +1,6 @@
-import { project, screenToWorldOnDepth } from "../math/projection.js";
+window.Atoms = window.Atoms || {};
 
-export class DragController {
+window.Atoms.DragController = class DragController {
   constructor(canvas, lattice, solver, camera, config) {
     this.canvas = canvas;
     this.lattice = lattice;
@@ -28,7 +28,7 @@ export class DragController {
 
     for (const atom of this.lattice.atoms) {
       if (atom.fixed) continue;
-      const screen = project(atom.position, this.camera);
+      const screen = window.Atoms.project(atom.position, this.camera);
       const radius = this.config.atomRadius * (0.9 + Math.max(0, screen.depth) * 0.0006) + 7;
       const distance = Math.hypot(point.x - screen.x, point.y - screen.y);
       if (distance <= radius && distance < bestDistance) {
@@ -49,7 +49,7 @@ export class DragController {
     this.atom = picked.atom;
     this.depth = picked.screen.depth;
     this.pointer = point;
-    this.solver.pin(this.atom, screenToWorldOnDepth(point, this.depth, this.camera));
+    this.solver.pin(this.atom, window.Atoms.screenToWorldOnDepth(point, this.depth, this.camera));
     this.canvas.classList.add("is-dragging");
     return true;
   }
@@ -57,12 +57,12 @@ export class DragController {
   move(point) {
     this.pointer = point;
     if (!this.atom) return;
-    this.solver.movePin(this.atom, screenToWorldOnDepth(point, this.depth, this.camera));
+    this.solver.movePin(this.atom, window.Atoms.screenToWorldOnDepth(point, this.depth, this.camera));
   }
 
   syncAfterCameraChange() {
     if (!this.atom) return;
-    this.solver.movePin(this.atom, screenToWorldOnDepth(this.pointer, this.depth, this.camera));
+    this.solver.movePin(this.atom, window.Atoms.screenToWorldOnDepth(this.pointer, this.depth, this.camera));
   }
 
   end() {
@@ -71,4 +71,4 @@ export class DragController {
     this.atom = null;
     this.canvas.classList.remove("is-dragging");
   }
-}
+};
