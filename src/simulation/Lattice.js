@@ -12,6 +12,7 @@ window.Atoms.Lattice = class Lattice {
     this.restLength = config.restLength;
     this.atoms = [];
     this.bonds = [];
+    this.bendingConstraints = [];
 
     const offsetX = (this.width - 1) * this.restLength * 0.5;
     const offsetY = (this.height - 1) * this.restLength * 0.5;
@@ -32,6 +33,7 @@ window.Atoms.Lattice = class Lattice {
     }
 
     this.connectNeighbors();
+    this.connectBendingConstraints();
   }
 
   index(x, y, z) {
@@ -60,6 +62,50 @@ window.Atoms.Lattice = class Lattice {
         }
       }
     }
+  }
+
+  connectBendingConstraints() {
+    const seen = new Set();
+
+    for (let z = 0; z < this.depth; z += 1) {
+      for (let y = 0; y < this.height; y += 1) {
+        for (let x = 0; x < this.width; x += 1) {
+          const neighbors = this.neighborsOf(x, y, z);
+
+          for (let i = 0; i < neighbors.length; i += 1) {
+            for (let j = i + 1; j < neighbors.length; j += 1) {
+              const a = neighbors[i];
+              const b = neighbors[j];
+              const first = Math.min(a.id, b.id);
+              const second = Math.max(a.id, b.id);
+              const key = `${first}:${second}`;
+
+              if (seen.has(key)) {
+                continue;
+              }
+
+              seen.add(key);
+              this.bendingConstraints.push(new window.Atoms.BendingConstraint(
+                a,
+                b,
+                window.Atoms.distance(a.restPosition, b.restPosition),
+              ));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  neighborsOf(x, y, z) {
+    const neighbors = [];
+    if (x > 0) neighbors.push(this.atomAt(x - 1, y, z));
+    if (x + 1 < this.width) neighbors.push(this.atomAt(x + 1, y, z));
+    if (y > 0) neighbors.push(this.atomAt(x, y - 1, z));
+    if (y + 1 < this.height) neighbors.push(this.atomAt(x, y + 1, z));
+    if (z > 0) neighbors.push(this.atomAt(x, y, z - 1));
+    if (z + 1 < this.depth) neighbors.push(this.atomAt(x, y, z + 1));
+    return neighbors;
   }
 
   reset() {

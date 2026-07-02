@@ -7,6 +7,7 @@ window.Atoms.defaultConfig = Object.freeze({
   restLength: 56,
   atomRadius: 7,
   stiffness: 0.55,
+  bendStiffness: 0.24,
   damping: 0.982,
   iterations: 7,
   energyScale: 0.12,

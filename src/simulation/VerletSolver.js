@@ -9,6 +9,7 @@ window.Atoms.VerletSolver = class VerletSolver {
   configure(config) {
     this.damping = config.damping;
     this.stiffness = config.stiffness;
+    this.bendStiffness = config.bendStiffness;
     this.iterations = config.iterations;
   }
 
@@ -53,23 +54,28 @@ window.Atoms.VerletSolver = class VerletSolver {
     }
 
     for (let i = 0; i < this.iterations; i += 1) {
-      this.solveBonds(lattice);
+      this.solveDistanceConstraints(lattice.bonds, this.stiffness);
+      this.solveDistanceConstraints(lattice.bendingConstraints, this.bendStiffness);
       this.applyLocks(lattice);
     }
   }
 
-  solveBonds(lattice) {
-    for (const bond of lattice.bonds) {
-      const a = bond.a;
-      const b = bond.b;
+  solveDistanceConstraints(constraints, stiffness) {
+    if (stiffness <= 0) {
+      return;
+    }
+
+    for (const constraint of constraints) {
+      const a = constraint.a;
+      const b = constraint.b;
       const deltaX = b.position.x - a.position.x;
       const deltaY = b.position.y - a.position.y;
       const deltaZ = b.position.z - a.position.z;
       const currentLength = Math.max(window.Atoms.distance(a.position, b.position), 0.0001);
-      const difference = (currentLength - bond.restLength) / currentLength;
-      const correctionX = deltaX * difference * this.stiffness;
-      const correctionY = deltaY * difference * this.stiffness;
-      const correctionZ = deltaZ * difference * this.stiffness;
+      const difference = (currentLength - constraint.restLength) / currentLength;
+      const correctionX = deltaX * difference * stiffness;
+      const correctionY = deltaY * difference * stiffness;
+      const correctionZ = deltaZ * difference * stiffness;
       const aLocked = a.fixed || this.pinned.has(a.id);
       const bLocked = b.fixed || this.pinned.has(b.id);
 
