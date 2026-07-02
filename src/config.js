@@ -9,6 +9,8 @@ window.Atoms.defaultConfig = Object.freeze({
   stiffness: 0.24,
   bendStiffness: 0.08,
   releaseEnergy: 0.85,
+  gravityEnabled: false,
+  gravityStrength: 0.18,
   damping: 0.998,
   iterations: 4,
   fastBending: true,

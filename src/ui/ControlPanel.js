@@ -13,6 +13,8 @@ window.Atoms.ControlPanel = class ControlPanel {
       stiffness: "stiffnessInput",
       bendStiffness: "bendStiffnessInput",
       releaseEnergy: "releaseEnergyInput",
+      gravityEnabled: "gravityEnabledInput",
+      gravityStrength: "gravityStrengthInput",
       damping: "dampingInput",
       iterations: "iterationsInput",
       fastBending: "fastBendingInput",
@@ -66,6 +68,8 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.stiffness = window.Atoms.readNumber(document.getElementById(this.ids.stiffness).value, this.config.stiffness, 0.02, 1);
     this.config.bendStiffness = window.Atoms.readNumber(document.getElementById(this.ids.bendStiffness).value, this.config.bendStiffness, 0, 1);
     this.config.releaseEnergy = window.Atoms.readNumber(document.getElementById(this.ids.releaseEnergy).value, this.config.releaseEnergy, 0, 1.5);
+    this.config.gravityEnabled = document.getElementById(this.ids.gravityEnabled).checked;
+    this.config.gravityStrength = window.Atoms.readNumber(document.getElementById(this.ids.gravityStrength).value, this.config.gravityStrength, 0, 1.5);
     this.config.damping = window.Atoms.readNumber(document.getElementById(this.ids.damping).value, this.config.damping, 0.9, 0.9995);
     this.config.iterations = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.iterations).value, this.config.iterations, 1, 20));
     this.config.fastBending = document.getElementById(this.ids.fastBending).checked;
