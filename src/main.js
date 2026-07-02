@@ -44,6 +44,10 @@ function resize() {
 }
 
 window.addEventListener("resize", resize);
+if ("ResizeObserver" in window) {
+  const resizeObserver = new ResizeObserver(resize);
+  resizeObserver.observe(canvas);
+}
 resize();
 
 canvas.addEventListener("contextmenu", (event) => event.preventDefault());

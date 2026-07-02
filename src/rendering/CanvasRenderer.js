@@ -6,18 +6,35 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     this.ctx = canvas.getContext("2d");
     this.config = config;
     this.pixelRatio = 1;
+    this.cssWidth = 0;
+    this.cssHeight = 0;
   }
 
   resize(camera) {
     const bounds = this.canvas.getBoundingClientRect();
     this.pixelRatio = window.devicePixelRatio || 1;
+    this.cssWidth = bounds.width;
+    this.cssHeight = bounds.height;
     this.canvas.width = Math.max(1, Math.floor(bounds.width * this.pixelRatio));
     this.canvas.height = Math.max(1, Math.floor(bounds.height * this.pixelRatio));
     this.ctx.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
     camera.resize(bounds.width, bounds.height);
   }
 
+  ensureSize(camera) {
+    const bounds = this.canvas.getBoundingClientRect();
+    const pixelRatio = window.devicePixelRatio || 1;
+    const widthChanged = Math.abs(bounds.width - this.cssWidth) > 0.5;
+    const heightChanged = Math.abs(bounds.height - this.cssHeight) > 0.5;
+    const ratioChanged = pixelRatio !== this.pixelRatio;
+
+    if (widthChanged || heightChanged || ratioChanged) {
+      this.resize(camera);
+    }
+  }
+
   render(lattice, camera) {
+    this.ensureSize(camera);
     const width = this.canvas.width / this.pixelRatio;
     const height = this.canvas.height / this.pixelRatio;
     const ctx = this.ctx;
