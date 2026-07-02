@@ -81,12 +81,26 @@
               <input id="iterationsInput" type="number" min="1" max="20" step="1">
               <span>Constraint solve passes per frame. More is stiffer and more stable, less is looser and springier.</span>
             </label>
+            <label class="checkbox-control">
+              <input id="fastBendingInput" type="checkbox">
+              <span class="checkbox-text">
+                Fast bending
+                <small>Solves hidden angle constraints every other pass. Faster on large grids, slightly less exact.</small>
+              </span>
+            </label>
           </div>
         </details>
 
         <details class="panel-section" open>
           <summary>Display</summary>
           <p>Tubes show bond strain: warm means stretched, cool means compressed. Atoms show accumulated local energy more softly.</p>
+          <label class="checkbox-control">
+            <input id="fastLargeGridAtomsInput" type="checkbox">
+            <span class="checkbox-text">
+              Fast large-grid atoms
+              <small>Uses simpler atom shading above 1,200 atoms. Faster, but less spherical-looking.</small>
+            </span>
+          </label>
         </details>
       </div>
 

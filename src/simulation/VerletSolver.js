@@ -12,7 +12,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.bendStiffness = config.bendStiffness;
     this.releaseEnergy = config.releaseEnergy;
     this.iterations = config.iterations;
-    this.bendCadence = 2;
+    this.bendCadence = config.fastBending ? 2 : 1;
     this.effectiveBendStiffness = Math.min(1, this.bendStiffness * this.bendCadence);
   }
 

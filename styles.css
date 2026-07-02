@@ -133,6 +133,34 @@ label span {
   line-height: 1.35;
 }
 
+.checkbox-control {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+}
+
+.checkbox-control input {
+  width: 16px;
+  min-height: 16px;
+  margin-top: 1px;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.checkbox-control .checkbox-text {
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.checkbox-control small {
+  color: #8490a1;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 input {
   width: 100%;
   min-height: 32px;
@@ -180,7 +208,8 @@ button:hover {
   }
 
   .panel-section p,
-  label span {
+  label span:not(.checkbox-text),
+  .checkbox-control small {
     display: none;
   }
 
@@ -208,7 +237,8 @@ button:hover {
   }
 
   .panel-section p,
-  label span {
+  label span:not(.checkbox-text),
+  .checkbox-control small {
     display: none;
   }
 }

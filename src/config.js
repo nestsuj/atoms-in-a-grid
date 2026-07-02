@@ -11,6 +11,8 @@ window.Atoms.defaultConfig = Object.freeze({
   releaseEnergy: 0.85,
   damping: 0.998,
   iterations: 4,
+  fastBending: true,
+  fastLargeGridAtoms: true,
   energyScale: 0.12,
   minZoom: 0.35,
   maxZoom: 3.2,

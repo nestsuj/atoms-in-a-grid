@@ -15,6 +15,8 @@ window.Atoms.ControlPanel = class ControlPanel {
       releaseEnergy: "releaseEnergyInput",
       damping: "dampingInput",
       iterations: "iterationsInput",
+      fastBending: "fastBendingInput",
+      fastLargeGridAtoms: "fastLargeGridAtomsInput",
     };
     this.bind();
     this.write();
@@ -42,7 +44,12 @@ window.Atoms.ControlPanel = class ControlPanel {
 
   write() {
     for (const [key, id] of Object.entries(this.ids)) {
-      document.getElementById(id).value = this.config[key];
+      const input = document.getElementById(id);
+      if (input.type === "checkbox") {
+        input.checked = Boolean(this.config[key]);
+      } else {
+        input.value = this.config[key];
+      }
     }
   }
 
@@ -57,5 +64,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.releaseEnergy = window.Atoms.readNumber(document.getElementById(this.ids.releaseEnergy).value, this.config.releaseEnergy, 0, 1.5);
     this.config.damping = window.Atoms.readNumber(document.getElementById(this.ids.damping).value, this.config.damping, 0.9, 0.9995);
     this.config.iterations = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.iterations).value, this.config.iterations, 1, 20));
+    this.config.fastBending = document.getElementById(this.ids.fastBending).checked;
+    this.config.fastLargeGridAtoms = document.getElementById(this.ids.fastLargeGridAtoms).checked;
   }
 };

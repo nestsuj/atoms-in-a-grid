@@ -65,7 +65,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     }
 
     projectedAtoms.sort((a, b) => a.screen.depth - b.screen.depth);
-    const simpleAtoms = lattice.atoms.length > 1200;
+    const simpleAtoms = this.config.fastLargeGridAtoms && lattice.atoms.length > 1200;
     for (const entry of projectedAtoms) {
       const depthShade = (entry.screen.depth - minDepth) / depthRange;
       this.drawAtom(ctx, entry, depthShade, simpleAtoms);
