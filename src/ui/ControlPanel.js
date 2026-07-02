@@ -34,10 +34,6 @@ window.Atoms.ControlPanel = class ControlPanel {
     }
 
     document.getElementById("resetButton").addEventListener("click", this.handlers.onReset);
-    document.getElementById("rebuildButton").addEventListener("click", () => {
-      this.read();
-      this.handlers.onRebuild();
-    });
     document.getElementById("pauseButton").addEventListener("click", (event) => {
       const paused = this.handlers.onTogglePause();
       event.currentTarget.textContent = paused ? "Resume" : "Pause";
