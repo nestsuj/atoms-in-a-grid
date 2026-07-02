@@ -16,77 +16,79 @@
         <button id="pauseButton" type="button">Pause</button>
       </div>
 
-      <details class="panel-section help" open>
-        <summary>Interaction</summary>
-        <p>Drag an atom to deform the lattice. Drag empty space, right-drag, or middle-drag to rotate. Use the mouse wheel to zoom. Hold Shift or Alt while dragging an atom to rotate without losing the grab.</p>
-      </details>
+      <div class="panel__body">
+        <details class="panel-section help" open>
+          <summary>Interaction</summary>
+          <p>Drag an atom to deform the lattice. Drag empty space, right-drag, or middle-drag to rotate. Use the mouse wheel to zoom. Hold Shift or Alt while dragging an atom to rotate without losing the grab.</p>
+        </details>
 
-      <details class="panel-section" open>
-        <summary>Grid</summary>
-        <div class="control-grid">
-          <label>
-            Width
-            <input id="widthInput" type="number" min="2" max="14" step="1">
-            <span>Atoms along the x axis. Rebuilds the lattice.</span>
-          </label>
-          <label>
-            Height
-            <input id="heightInput" type="number" min="2" max="14" step="1">
-            <span>Atoms along the y axis. Rebuilds the lattice.</span>
-          </label>
-          <label>
-            Depth
-            <input id="depthInput" type="number" min="2" max="14" step="1">
-            <span>Atoms along the z axis. Rebuilds the lattice.</span>
-          </label>
-          <label>
-            Bond length
-            <input id="restLengthInput" type="number" min="24" max="120" step="2">
-            <span>Resting distance between neighboring atoms.</span>
-          </label>
-          <label>
-            Atom radius
-            <input id="atomRadiusInput" type="number" min="3" max="18" step="1">
-            <span>Visual sphere size only.</span>
-          </label>
-        </div>
-      </details>
+        <details class="panel-section" open>
+          <summary>Grid</summary>
+          <div class="control-grid">
+            <label>
+              Width
+              <input id="widthInput" type="number" min="2" max="14" step="1">
+              <span>Atoms along the x axis. Rebuilds the lattice.</span>
+            </label>
+            <label>
+              Height
+              <input id="heightInput" type="number" min="2" max="14" step="1">
+              <span>Atoms along the y axis. Rebuilds the lattice.</span>
+            </label>
+            <label>
+              Depth
+              <input id="depthInput" type="number" min="2" max="14" step="1">
+              <span>Atoms along the z axis. Rebuilds the lattice.</span>
+            </label>
+            <label>
+              Bond length
+              <input id="restLengthInput" type="number" min="24" max="120" step="2">
+              <span>Resting distance between neighboring atoms.</span>
+            </label>
+            <label>
+              Atom radius
+              <input id="atomRadiusInput" type="number" min="3" max="18" step="1">
+              <span>Visual sphere size only.</span>
+            </label>
+          </div>
+        </details>
 
-      <details class="panel-section" open>
-        <summary>Physics</summary>
-        <div class="control-grid">
-          <label>
-            Stiffness
-            <input id="stiffnessInput" type="range" min="0.02" max="1" step="0.01">
-            <span>How strongly visible bonds restore their rest length.</span>
-          </label>
-          <label>
-            Bend stiffness
-            <input id="bendStiffnessInput" type="range" min="0" max="1" step="0.01">
-            <span>Hidden angle resistance that keeps rows and corners square.</span>
-          </label>
-          <label>
-            Release energy
-            <input id="releaseEnergyInput" type="range" min="0" max="1.5" step="0.01">
-            <span>How much flick velocity is kept when an atom is released.</span>
-          </label>
-          <label>
-            Damping
-            <input id="dampingInput" type="range" min="0.9" max="0.9995" step="0.0005">
-            <span>Energy retained each frame. Higher values ring longer.</span>
-          </label>
-          <label>
-            Iterations
-            <input id="iterationsInput" type="number" min="1" max="20" step="1">
-            <span>Constraint solve passes per frame. More is stiffer and more stable, less is looser and springier.</span>
-          </label>
-        </div>
-      </details>
+        <details class="panel-section" open>
+          <summary>Physics</summary>
+          <div class="control-grid">
+            <label>
+              Stiffness
+              <input id="stiffnessInput" type="range" min="0.02" max="1" step="0.01">
+              <span>How strongly visible bonds restore their rest length.</span>
+            </label>
+            <label>
+              Bend stiffness
+              <input id="bendStiffnessInput" type="range" min="0" max="1" step="0.01">
+              <span>Hidden angle resistance that keeps rows and corners square.</span>
+            </label>
+            <label>
+              Release energy
+              <input id="releaseEnergyInput" type="range" min="0" max="1.5" step="0.01">
+              <span>How much flick velocity is kept when an atom is released.</span>
+            </label>
+            <label>
+              Damping
+              <input id="dampingInput" type="range" min="0.9" max="0.9995" step="0.0005">
+              <span>Energy retained each frame. Higher values ring longer.</span>
+            </label>
+            <label>
+              Iterations
+              <input id="iterationsInput" type="number" min="1" max="20" step="1">
+              <span>Constraint solve passes per frame. More is stiffer and more stable, less is looser and springier.</span>
+            </label>
+          </div>
+        </details>
 
-      <details class="panel-section" open>
-        <summary>Display</summary>
-        <p>Tubes show bond strain: warm means stretched, cool means compressed. Atoms show accumulated local energy more softly.</p>
-      </details>
+        <details class="panel-section" open>
+          <summary>Display</summary>
+          <p>Tubes show bond strain: warm means stretched, cool means compressed. Atoms show accumulated local energy more softly.</p>
+        </details>
+      </div>
 
       <div class="actions">
         <button id="resetButton" type="button">Reset</button>
