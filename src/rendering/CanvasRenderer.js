@@ -8,6 +8,8 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     this.pixelRatio = 1;
     this.cssWidth = 0;
     this.cssHeight = 0;
+    this.projectedAtoms = [];
+    this.bondEntries = [];
   }
 
   resize(camera) {
@@ -41,34 +43,79 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     ctx.clearRect(0, 0, width, height);
     this.drawBackground(ctx, width, height);
 
-    const projectedAtoms = lattice.atoms.map((atom) => ({
-      atom,
-      screen: window.Atoms.project(atom.position, camera),
-    }));
-    const atomById = new Map(projectedAtoms.map((entry) => [entry.atom.id, entry]));
+    const basis = camera.getBasis();
+    const projectedAtoms = this.prepareAtomEntries(lattice, camera, basis);
+    let minDepth = Infinity;
+    let maxDepth = -Infinity;
 
-    const minDepth = Math.min(...projectedAtoms.map((entry) => entry.screen.depth));
-    const maxDepth = Math.max(...projectedAtoms.map((entry) => entry.screen.depth));
+    for (let i = 0; i < projectedAtoms.length; i += 1) {
+      const depth = projectedAtoms[i].screen.depth;
+      if (depth < minDepth) minDepth = depth;
+      if (depth > maxDepth) maxDepth = depth;
+    }
+
     const depthRange = Math.max(1, maxDepth - minDepth);
+    const bondEntries = this.prepareBondEntries(lattice, projectedAtoms);
+    bondEntries.sort((a, b) => a.depth - b.depth);
 
-    const bondEntries = lattice.bonds.map((bond) => ({
-      bond,
-      a: atomById.get(bond.a.id).screen,
-      b: atomById.get(bond.b.id).screen,
-      depth: (atomById.get(bond.a.id).screen.depth + atomById.get(bond.b.id).screen.depth) * 0.5,
-      strain: (window.Atoms.distance(bond.a.position, bond.b.position) - bond.restLength) / bond.restLength,
-    })).sort((a, b) => a.depth - b.depth);
-
+    ctx.lineCap = "round";
     for (const entry of bondEntries) {
       const depthShade = (entry.depth - minDepth) / depthRange;
       this.drawBond(ctx, entry, depthShade);
     }
 
     projectedAtoms.sort((a, b) => a.screen.depth - b.screen.depth);
+    const simpleAtoms = lattice.atoms.length > 1200;
     for (const entry of projectedAtoms) {
       const depthShade = (entry.screen.depth - minDepth) / depthRange;
-      this.drawAtom(ctx, entry, depthShade);
+      this.drawAtom(ctx, entry, depthShade, simpleAtoms);
     }
+  }
+
+  prepareAtomEntries(lattice, camera, basis) {
+    const atoms = lattice.atoms;
+    this.projectedAtoms.length = atoms.length;
+
+    for (let i = 0; i < atoms.length; i += 1) {
+      let entry = this.projectedAtoms[i];
+      if (!entry) {
+        entry = { atom: null, screen: { x: 0, y: 0, depth: 0 } };
+        this.projectedAtoms[i] = entry;
+      }
+
+      entry.atom = atoms[i];
+      window.Atoms.projectWithBasis(atoms[i].position, camera, basis, entry.screen);
+    }
+
+    return this.projectedAtoms;
+  }
+
+  prepareBondEntries(lattice, projectedAtoms) {
+    const bonds = lattice.bonds;
+    this.bondEntries.length = bonds.length;
+
+    for (let i = 0; i < bonds.length; i += 1) {
+      const bond = bonds[i];
+      const a = projectedAtoms[bond.a.id].screen;
+      const b = projectedAtoms[bond.b.id].screen;
+      const deltaX = bond.b.position.x - bond.a.position.x;
+      const deltaY = bond.b.position.y - bond.a.position.y;
+      const deltaZ = bond.b.position.z - bond.a.position.z;
+      let entry = this.bondEntries[i];
+
+      if (!entry) {
+        entry = { bond: null, a: null, b: null, depth: 0, strain: 0 };
+        this.bondEntries[i] = entry;
+      }
+
+      entry.bond = bond;
+      entry.a = a;
+      entry.b = b;
+      entry.depth = (a.depth + b.depth) * 0.5;
+      entry.strain = (Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ) - bond.restLength) / bond.restLength;
+    }
+
+    return this.bondEntries;
   }
 
   drawBackground(ctx, width, height) {
@@ -86,31 +133,36 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     const rawStrain = Math.min(1, Math.abs(entry.strain) * 2.2);
     const strain = rawStrain * rawStrain * (3 - 2 * rawStrain);
     ctx.lineWidth = 1.8 + depthShade * 2.1 + strain * 2.7;
-    ctx.lineCap = "round";
     ctx.strokeStyle = window.Atoms.bondColor(depthShade, entry.strain);
     ctx.stroke();
   }
 
-  drawAtom(ctx, entry, depthShade) {
+  drawAtom(ctx, entry, depthShade, simple) {
     const radius = this.config.atomRadius * (0.78 + depthShade * 0.46) * this.config.zoomVisualScale;
     const atom = entry.atom;
     const x = entry.screen.x;
     const y = entry.screen.y;
-    const gradient = ctx.createRadialGradient(
-      x - radius * 0.35,
-      y - radius * 0.45,
-      radius * 0.15,
-      x,
-      y,
-      radius,
-    );
-    gradient.addColorStop(0, atom.fixed ? "#ffffff" : "#efffff");
-    gradient.addColorStop(0.25, window.Atoms.atomColor(atom, depthShade));
-    gradient.addColorStop(1, atom.selected ? "#fff0a6" : "#223041");
+    let fillStyle;
+
+    if (simple) {
+      fillStyle = atom.selected ? "#ffe182" : window.Atoms.atomColor(atom, depthShade);
+    } else {
+      fillStyle = ctx.createRadialGradient(
+        x - radius * 0.35,
+        y - radius * 0.45,
+        radius * 0.15,
+        x,
+        y,
+        radius,
+      );
+      fillStyle.addColorStop(0, atom.fixed ? "#ffffff" : "#efffff");
+      fillStyle.addColorStop(0.25, window.Atoms.atomColor(atom, depthShade));
+      fillStyle.addColorStop(1, atom.selected ? "#fff0a6" : "#223041");
+    }
 
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = gradient;
+    ctx.fillStyle = fillStyle;
     ctx.fill();
 
     if (atom.fixed || atom.selected) {

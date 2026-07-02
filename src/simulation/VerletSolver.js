@@ -12,6 +12,8 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.bendStiffness = config.bendStiffness;
     this.releaseEnergy = config.releaseEnergy;
     this.iterations = config.iterations;
+    this.bendCadence = 2;
+    this.effectiveBendStiffness = Math.min(1, this.bendStiffness * this.bendCadence);
   }
 
   pin(atom, position) {
@@ -84,7 +86,9 @@ window.Atoms.VerletSolver = class VerletSolver {
 
     for (let i = 0; i < this.iterations; i += 1) {
       this.solveDistanceConstraints(lattice.bonds, this.stiffness);
-      this.solveDistanceConstraints(lattice.bendingConstraints, this.bendStiffness);
+      if (i % this.bendCadence === 0) {
+        this.solveDistanceConstraints(lattice.bendingConstraints, this.effectiveBendStiffness);
+      }
       this.applyLocks(lattice);
     }
   }
@@ -100,7 +104,7 @@ window.Atoms.VerletSolver = class VerletSolver {
       const deltaX = b.position.x - a.position.x;
       const deltaY = b.position.y - a.position.y;
       const deltaZ = b.position.z - a.position.z;
-      const currentLength = Math.max(window.Atoms.distance(a.position, b.position), 0.0001);
+      const currentLength = Math.max(Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ), 0.0001);
       const difference = (currentLength - constraint.restLength) / currentLength;
       const correctionX = deltaX * difference * stiffness;
       const correctionY = deltaY * difference * stiffness;

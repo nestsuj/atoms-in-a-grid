@@ -25,14 +25,19 @@ window.Atoms.DragController = class DragController {
   pick(point) {
     let best = null;
     let bestDistance = Infinity;
+    const basis = this.camera.getBasis();
+    const screen = { x: 0, y: 0, depth: 0 };
 
     for (const atom of this.lattice.atoms) {
       if (atom.fixed) continue;
-      const screen = window.Atoms.project(atom.position, this.camera);
+      window.Atoms.projectWithBasis(atom.position, this.camera, basis, screen);
       const radius = this.config.atomRadius * (0.9 + Math.max(0, screen.depth) * 0.0006) + 7;
       const distance = Math.hypot(point.x - screen.x, point.y - screen.y);
       if (distance <= radius && distance < bestDistance) {
-        best = { atom, screen };
+        best = {
+          atom,
+          screen: { x: screen.x, y: screen.y, depth: screen.depth },
+        };
         bestDistance = distance;
       }
     }
