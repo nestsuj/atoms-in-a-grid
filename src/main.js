@@ -1,4 +1,5 @@
 const canvas = document.getElementById("scene");
+const sceneStats = document.getElementById("sceneStats");
 const config = { ...window.Atoms.defaultConfig, zoomVisualScale: 1 };
 const camera = new window.Atoms.Camera(config);
 let lattice = new window.Atoms.Lattice(config);
@@ -20,12 +21,21 @@ function rebuild() {
   drag.setLattice(lattice);
   solver.pinned.clear();
   energy.update(lattice);
+  updateSceneStats();
 }
 
 function reset() {
   solver.pinned.clear();
   drag.end();
   lattice.reset();
+}
+
+function updateSceneStats() {
+  sceneStats.innerHTML = [
+    `<div><span>Atoms</span>${lattice.atoms.length.toLocaleString()}</div>`,
+    `<div><span>Bonds</span>${lattice.bonds.length.toLocaleString()}</div>`,
+    `<div><span>Bending</span>${lattice.bendingConstraints.length.toLocaleString()}</div>`,
+  ].join("");
 }
 
 new window.Atoms.ControlPanel(config, {
@@ -41,6 +51,7 @@ new window.Atoms.ControlPanel(config, {
 function resize() {
   renderer.resize(camera);
   config.zoomVisualScale = Math.sqrt(camera.zoom);
+  updateSceneStats();
 }
 
 window.addEventListener("resize", resize);
@@ -49,6 +60,7 @@ if ("ResizeObserver" in window) {
   resizeObserver.observe(canvas);
 }
 resize();
+updateSceneStats();
 
 canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 

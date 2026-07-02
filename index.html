@@ -8,7 +8,10 @@
 </head>
 <body>
   <main class="app">
-    <canvas id="scene" aria-label="Interactive atom lattice simulation"></canvas>
+    <section class="viewport" aria-label="Simulation view">
+      <canvas id="scene" aria-label="Interactive atom lattice simulation"></canvas>
+      <div id="sceneStats" class="scene-stats" aria-live="polite"></div>
+    </section>
 
     <aside class="panel" aria-label="Simulation controls">
       <div class="panel__header">
