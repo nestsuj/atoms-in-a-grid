@@ -69,6 +69,22 @@ function applyMaterialChange() {
   simulationTime = 0;
 }
 
+function syncCameraChange() {
+  drag.syncAfterCameraChange();
+  pinEdit.syncAfterCameraChange();
+  config.zoomVisualScale = Math.sqrt(camera.zoom);
+}
+
+function setFrontView() {
+  camera.setFrontView();
+  syncCameraChange();
+}
+
+function setDefaultView() {
+  camera.setDefaultView();
+  syncCameraChange();
+}
+
 function updateSceneStats() {
   sceneStats.innerHTML = [
     `<div><span>Atoms</span>${lattice.atoms.length.toLocaleString()}</div>`,
@@ -117,6 +133,8 @@ new window.Atoms.ControlPanel(config, {
   onRebuild: rebuild,
   onReset: reset,
   onClearUserPins: clearUserPins,
+  onFrontView: setFrontView,
+  onDefaultView: setDefaultView,
   onTogglePause: () => {
     paused = !paused;
     return paused;
@@ -182,9 +200,7 @@ canvas.addEventListener("pointermove", (event) => {
 
   if (orbit.active) {
     orbit.move(point);
-    drag.syncAfterCameraChange();
-    pinEdit.syncAfterCameraChange();
-    config.zoomVisualScale = Math.sqrt(camera.zoom);
+    syncCameraChange();
   }
 });
 
@@ -215,9 +231,7 @@ canvas.addEventListener("pointercancel", () => {
 canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
   orbit.zoom(event.deltaY);
-  drag.syncAfterCameraChange();
-  pinEdit.syncAfterCameraChange();
-  config.zoomVisualScale = Math.sqrt(camera.zoom);
+  syncCameraChange();
 }, { passive: false });
 
 window.addEventListener("keydown", (event) => {
@@ -250,8 +264,7 @@ function updateKeyboardPan(elapsed) {
   const speed = 420;
   const scale = (speed * elapsed) / 1000 / length;
   camera.pan(right * scale, -up * scale);
-  drag.syncAfterCameraChange();
-  pinEdit.syncAfterCameraChange();
+  syncCameraChange();
 }
 
 function animate(time) {

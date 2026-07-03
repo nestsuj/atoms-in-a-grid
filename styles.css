@@ -142,6 +142,19 @@ body {
   gap: 12px;
 }
 
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.header-actions button {
+  min-height: 30px;
+  padding: 0 9px;
+  font-size: 12px;
+}
+
 .panel__body {
   flex: 1 1 auto;
   min-height: 0;

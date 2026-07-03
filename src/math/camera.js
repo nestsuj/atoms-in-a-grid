@@ -2,8 +2,10 @@ window.Atoms = window.Atoms || {};
 
 window.Atoms.Camera = class Camera {
   constructor(config) {
-    this.rotationX = -0.62;
-    this.rotationY = 0.72;
+    this.defaultRotationX = -0.62;
+    this.defaultRotationY = 0.72;
+    this.rotationX = this.defaultRotationX;
+    this.rotationY = this.defaultRotationY;
     this.zoom = 1;
     this.minZoom = config.minZoom;
     this.maxZoom = config.maxZoom;
@@ -32,6 +34,19 @@ window.Atoms.Camera = class Camera {
   pan(deltaX, deltaY) {
     this.center.x += deltaX;
     this.center.y += deltaY;
+  }
+
+  setView(rotationX, rotationY) {
+    this.rotationX = rotationX;
+    this.rotationY = rotationY;
+  }
+
+  setDefaultView() {
+    this.setView(this.defaultRotationX, this.defaultRotationY);
+  }
+
+  setFrontView() {
+    this.setView(0, 0);
   }
 
   getBasis() {
