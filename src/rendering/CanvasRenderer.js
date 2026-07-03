@@ -75,6 +75,8 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       const depthShade = 0.5 + (rawDepthShade - 0.5) * this.config.atomDepthShading;
       this.drawAtom(ctx, entry, depthShade, simpleAtoms);
     }
+
+    this.drawWindIndicator(ctx, camera, basis, width, height);
   }
 
   prepareAtomEntries(lattice, camera, basis) {
@@ -179,6 +181,60 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       ctx.lineWidth = atom.selected ? 2.5 : 1.5;
       ctx.strokeStyle = atom.selected ? "#ffe182" : "rgba(255, 255, 255, 0.7)";
       ctx.stroke();
+    }
+  }
+
+  drawWindIndicator(ctx, camera, basis, width, height) {
+    if (!this.config.windEnabled || this.config.windStrength <= 0) {
+      return;
+    }
+
+    const direction = this.windDirectionVector(this.config.windDirection);
+    const projectedX = direction.x * basis.right.x + direction.y * basis.right.y + direction.z * basis.right.z;
+    const projectedY = -(direction.x * basis.up.x + direction.y * basis.up.y + direction.z * basis.up.z);
+    const length = Math.hypot(projectedX, projectedY);
+
+    if (length < 0.000001) {
+      return;
+    }
+
+    const arrowLength = 42;
+    const startX = Math.max(24, Math.min(width - 92, 34));
+    const startY = Math.max(24, height - 38);
+    const endX = startX + (projectedX / length) * arrowLength;
+    const endY = startY + (projectedY / length) * arrowLength;
+    const angle = Math.atan2(endY - startY, endX - startX);
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(143, 231, 255, 0.92)";
+    ctx.fillStyle = "rgba(143, 231, 255, 0.92)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(endX, endY);
+    ctx.lineTo(endX - Math.cos(angle - 0.55) * 10, endY - Math.sin(angle - 0.55) * 10);
+    ctx.lineTo(endX - Math.cos(angle + 0.55) * 10, endY - Math.sin(angle + 0.55) * 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.font = "11px system-ui, sans-serif";
+    ctx.fillText("wind", startX, startY - 8);
+    ctx.restore();
+  }
+
+  windDirectionVector(value) {
+    switch (value) {
+      case "z-": return { x: 0, y: 0, z: -1 };
+      case "x+": return { x: 1, y: 0, z: 0 };
+      case "x-": return { x: -1, y: 0, z: 0 };
+      case "y+": return { x: 0, y: 1, z: 0 };
+      case "y-": return { x: 0, y: -1, z: 0 };
+      case "z+":
+      default: return { x: 0, y: 0, z: 1 };
     }
   }
 };

@@ -157,7 +157,7 @@ window.Atoms.scenePresets = Object.freeze({
     gravityEnabled: true,
     gravityStrength: 0.18,
     windEnabled: true,
-    windDirection: "z+",
+    windDirection: "z-",
     windStrength: 0.2,
     windTurbulence: 0.9,
     windScale: 260,
