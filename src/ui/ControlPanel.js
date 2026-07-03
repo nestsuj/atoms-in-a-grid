@@ -10,6 +10,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       depth: "depthInput",
       restLength: "restLengthInput",
       atomRadius: "atomRadiusInput",
+      material: "materialInput",
       physicsMode: "physicsModeInput",
       stiffness: "stiffnessInput",
       shearStiffness: "shearStiffnessInput",
@@ -34,6 +35,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       energyUpdateRate: "energyUpdateRateInput",
     };
     this.bind();
+    this.applyMaterial(this.config.material);
     this.write();
   }
 
@@ -41,7 +43,19 @@ window.Atoms.ControlPanel = class ControlPanel {
     for (const [key, id] of Object.entries(this.ids)) {
       const input = document.getElementById(id);
       input.addEventListener("input", () => {
+        if (key === "material") {
+          this.applyMaterial(input.value);
+          this.write();
+          this.handlers.onConfigure();
+          return;
+        }
+
         this.read();
+        if (window.Atoms.materialKeys.includes(key)) {
+          this.config.material = "custom";
+          document.getElementById(this.ids.material).value = "custom";
+        }
+
         if (["width", "height", "depth", "restLength"].includes(key)) {
           this.handlers.onRebuild();
         } else {
@@ -56,6 +70,19 @@ window.Atoms.ControlPanel = class ControlPanel {
       const paused = this.handlers.onTogglePause();
       event.currentTarget.textContent = paused ? "Resume" : "Pause";
     });
+  }
+
+  applyMaterial(materialId) {
+    const material = window.Atoms.materialProperties[materialId];
+    this.config.material = material ? materialId : "custom";
+
+    if (!material) {
+      return;
+    }
+
+    for (const key of window.Atoms.materialKeys) {
+      this.config[key] = material[key];
+    }
   }
 
   write() {
@@ -75,6 +102,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.depth = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.depth).value, this.config.depth, 1, 18));
     this.config.restLength = window.Atoms.readNumber(document.getElementById(this.ids.restLength).value, this.config.restLength, 24, 120);
     this.config.atomRadius = window.Atoms.readNumber(document.getElementById(this.ids.atomRadius).value, this.config.atomRadius, 3, 18);
+    this.config.material = document.getElementById(this.ids.material).value;
     this.config.physicsMode = document.getElementById(this.ids.physicsMode).value;
     this.config.stiffness = window.Atoms.readNumber(document.getElementById(this.ids.stiffness).value, this.config.stiffness, 0.02, 1);
     this.config.shearStiffness = window.Atoms.readNumber(document.getElementById(this.ids.shearStiffness).value, this.config.shearStiffness, 0, 1);

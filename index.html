@@ -61,6 +61,18 @@
           <summary>Physics</summary>
           <div class="control-grid">
             <label>
+              Material
+              <select id="materialInput">
+                <option value="molecular">Molecular</option>
+                <option value="cloth">Cloth</option>
+                <option value="rubber">Rubber</option>
+                <option value="gel">Gel</option>
+                <option value="heavy">Heavy lattice</option>
+                <option value="custom">Custom</option>
+              </select>
+              <span>Physics-only material bundle. Sliders remain editable after selection.</span>
+            </label>
+            <label>
               Physics mode
               <select id="physicsModeInput">
                 <option value="spring">Spring forces</option>
