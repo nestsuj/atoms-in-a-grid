@@ -74,6 +74,12 @@ function updateSceneStats() {
 }
 
 function updatePhysicsStats(steps) {
+  if (!config.showDiagnostics) {
+    physicsStats.hidden = true;
+    return;
+  }
+
+  physicsStats.hidden = false;
   const values = diagnostics.update(lattice, config.physicsRate);
   physicsStats.innerHTML = [
     `<div><span>Material</span>${formatMaterial()}</div>`,

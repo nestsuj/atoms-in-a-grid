@@ -115,6 +115,10 @@ body {
   color: var(--muted);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .panel {
   display: flex;
   flex-direction: column;

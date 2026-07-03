@@ -30,6 +30,8 @@ window.Atoms.defaultConfig = Object.freeze({
   sortBonds: true,
   sortAtoms: true,
   simpleBondColors: false,
+  showDiagnostics: true,
+  atomDepthShading: 1,
   energyUpdateRate: 1,
   energyScale: 0.12,
   minZoom: 0.35,
