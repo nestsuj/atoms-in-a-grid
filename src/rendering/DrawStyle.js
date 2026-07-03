@@ -2,16 +2,28 @@ window.Atoms = window.Atoms || {};
 
 window.Atoms.atomColor = function atomColor(atom, depthShade) {
   const energy = window.Atoms.clamp(atom.energy * 0.62, 0, 1);
+  const shade = 0.62 + depthShade * 0.38;
   const cool = {
-    r: 70 + depthShade * 40,
-    g: 180 + depthShade * 32,
-    b: 205 + depthShade * 28,
+    r: 44 + depthShade * 66,
+    g: 128 + depthShade * 84,
+    b: 154 + depthShade * 79,
   };
-  const hot = { r: 255, g: 102, b: 70 };
+  const hot = {
+    r: 255 * shade,
+    g: 102 * shade,
+    b: 70 * shade,
+  };
 
   const r = Math.round(cool.r + (hot.r - cool.r) * energy);
   const g = Math.round(cool.g + (hot.g - cool.g) * energy);
   const b = Math.round(cool.b + (hot.b - cool.b) * energy);
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
+window.Atoms.atomRimColor = function atomRimColor(depthShade) {
+  const r = Math.round(18 + depthShade * 16);
+  const g = Math.round(26 + depthShade * 22);
+  const b = Math.round(36 + depthShade * 29);
   return `rgb(${r}, ${g}, ${b})`;
 };
 

@@ -166,7 +166,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       );
       fillStyle.addColorStop(0, atom.fixed ? "#ffffff" : "#efffff");
       fillStyle.addColorStop(0.25, window.Atoms.atomColor(atom, depthShade));
-      fillStyle.addColorStop(1, atom.selected ? "#fff0a6" : "#223041");
+      fillStyle.addColorStop(1, atom.selected ? "#fff0a6" : window.Atoms.atomRimColor(depthShade));
     }
 
     ctx.beginPath();
