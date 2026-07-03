@@ -14,6 +14,7 @@ const drag = new window.Atoms.DragController(canvas, lattice, solver, camera, co
 const pinEdit = new window.Atoms.PinEditController(canvas, lattice, camera, config);
 let paused = false;
 let frame = 0;
+let simulationTime = 0;
 let lastTime = performance.now();
 let accumulator = 0;
 let needsEnergyUpdate = true;
@@ -34,6 +35,7 @@ function rebuild() {
   energy.update(lattice);
   needsEnergyUpdate = false;
   accumulator = 0;
+  simulationTime = 0;
   updateSceneStats();
 }
 
@@ -44,6 +46,7 @@ function reset() {
   lattice.reset();
   needsEnergyUpdate = true;
   accumulator = 0;
+  simulationTime = 0;
 }
 
 function clearUserPins() {
@@ -52,6 +55,7 @@ function clearUserPins() {
   pinEdit.cancel();
   lattice.clearUserPins();
   needsEnergyUpdate = true;
+  simulationTime = 0;
 }
 
 function applyMaterialChange() {
@@ -62,6 +66,7 @@ function applyMaterialChange() {
   configureRuntime();
   needsEnergyUpdate = true;
   accumulator = 0;
+  simulationTime = 0;
 }
 
 function updateSceneStats() {
@@ -263,7 +268,8 @@ function animate(time) {
     accumulator += elapsed;
 
     while (accumulator >= fixedStep && steps < maxPhysicsSteps) {
-      solver.step(lattice);
+      solver.step(lattice, simulationTime);
+      simulationTime += fixedStep / 1000;
       accumulator -= fixedStep;
       steps += 1;
       frame += 1;

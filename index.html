@@ -191,6 +191,51 @@
           </div>
         </details>
 
+        <details class="panel-section">
+          <summary>Environment</summary>
+          <div class="control-grid">
+            <label class="checkbox-control">
+              <input id="windEnabledInput" type="checkbox">
+              <span class="checkbox-text">
+                Wind
+                <small>Applies a smooth uneven force field. The flag preset uses it for flapping.</small>
+              </span>
+            </label>
+            <label>
+              Wind direction
+              <select id="windDirectionInput">
+                <option value="z+">+Z out of sheet</option>
+                <option value="z-">-Z into sheet</option>
+                <option value="x+">+X right</option>
+                <option value="x-">-X left</option>
+                <option value="y+">+Y down</option>
+                <option value="y-">-Y up</option>
+              </select>
+              <span>Direction of the base wind force in world space.</span>
+            </label>
+            <label>
+              Wind strength
+              <input id="windStrengthInput" type="range" min="0" max="1.5" step="0.01">
+              <span>Overall force scale. Higher values push atoms harder.</span>
+            </label>
+            <label>
+              Wind turbulence
+              <input id="windTurbulenceInput" type="range" min="0" max="2" step="0.01">
+              <span>How uneven the force landscape is across the grid.</span>
+            </label>
+            <label>
+              Wind scale
+              <input id="windScaleInput" type="range" min="40" max="600" step="10">
+              <span>Size of the moving hills. Larger values make broader waves.</span>
+            </label>
+            <label>
+              Wind speed
+              <input id="windSpeedInput" type="range" min="0" max="5" step="0.05">
+              <span>How quickly the force landscape changes over time.</span>
+            </label>
+          </div>
+        </details>
+
         <details class="panel-section" open>
           <summary>Display</summary>
           <p>Tubes show bond strain: warm means stretched, cool means compressed. Atoms show accumulated local energy more softly.</p>
@@ -249,24 +294,24 @@
     </aside>
   </main>
 
-  <script src="./src/config.js?v=20260703d"></script>
-  <script src="./src/math/vec3.js?v=20260703d"></script>
-  <script src="./src/math/camera.js?v=20260703d"></script>
-  <script src="./src/math/projection.js?v=20260703d"></script>
-  <script src="./src/simulation/Atom.js?v=20260703d"></script>
-  <script src="./src/simulation/Bond.js?v=20260703d"></script>
-  <script src="./src/simulation/BendingConstraint.js?v=20260703d"></script>
-  <script src="./src/simulation/Lattice.js?v=20260703d"></script>
-  <script src="./src/simulation/VerletSolver.js?v=20260703d"></script>
-  <script src="./src/simulation/EnergyModel.js?v=20260703d"></script>
-  <script src="./src/simulation/Diagnostics.js?v=20260703d"></script>
-  <script src="./src/rendering/DrawStyle.js?v=20260703d"></script>
-  <script src="./src/rendering/CanvasRenderer.js?v=20260703d"></script>
-  <script src="./src/input/PointerController.js?v=20260703d"></script>
-  <script src="./src/input/OrbitController.js?v=20260703d"></script>
-  <script src="./src/input/DragController.js?v=20260703d"></script>
-  <script src="./src/input/PinEditController.js?v=20260703d"></script>
-  <script src="./src/ui/ControlPanel.js?v=20260703d"></script>
-  <script src="./src/main.js?v=20260703d"></script>
+  <script src="./src/config.js?v=20260703e"></script>
+  <script src="./src/math/vec3.js?v=20260703e"></script>
+  <script src="./src/math/camera.js?v=20260703e"></script>
+  <script src="./src/math/projection.js?v=20260703e"></script>
+  <script src="./src/simulation/Atom.js?v=20260703e"></script>
+  <script src="./src/simulation/Bond.js?v=20260703e"></script>
+  <script src="./src/simulation/BendingConstraint.js?v=20260703e"></script>
+  <script src="./src/simulation/Lattice.js?v=20260703e"></script>
+  <script src="./src/simulation/VerletSolver.js?v=20260703e"></script>
+  <script src="./src/simulation/EnergyModel.js?v=20260703e"></script>
+  <script src="./src/simulation/Diagnostics.js?v=20260703e"></script>
+  <script src="./src/rendering/DrawStyle.js?v=20260703e"></script>
+  <script src="./src/rendering/CanvasRenderer.js?v=20260703e"></script>
+  <script src="./src/input/PointerController.js?v=20260703e"></script>
+  <script src="./src/input/OrbitController.js?v=20260703e"></script>
+  <script src="./src/input/DragController.js?v=20260703e"></script>
+  <script src="./src/input/PinEditController.js?v=20260703e"></script>
+  <script src="./src/ui/ControlPanel.js?v=20260703e"></script>
+  <script src="./src/main.js?v=20260703e"></script>
 </body>
 </html>

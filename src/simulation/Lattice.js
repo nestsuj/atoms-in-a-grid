@@ -28,7 +28,11 @@ window.Atoms.Lattice = class Lattice {
             y * this.restLength - offsetY,
             z * this.restLength - offsetZ,
           );
-          this.atoms.push(new window.Atoms.Atom(id, position));
+          const atom = new window.Atoms.Atom(id, position);
+          atom.gridX = x;
+          atom.gridY = y;
+          atom.gridZ = z;
+          this.atoms.push(atom);
         }
       }
     }

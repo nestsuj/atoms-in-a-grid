@@ -22,6 +22,12 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.mouseStiffness = config.mouseStiffness;
     this.mouseDamping = config.mouseDamping;
     this.gravity = config.gravityEnabled ? config.gravityStrength : 0;
+    this.windEnabled = config.windEnabled;
+    this.windStrength = config.windStrength;
+    this.windTurbulence = config.windTurbulence;
+    this.windScale = config.windScale;
+    this.windSpeed = config.windSpeed;
+    this.windDirection = this.getWindDirection(config.windDirection);
     this.iterations = config.iterations;
     this.bendCadence = config.fastBending ? 2 : 1;
     this.effectiveBendStiffness = Math.min(1, this.bendStiffness * this.bendCadence);
@@ -75,16 +81,16 @@ window.Atoms.VerletSolver = class VerletSolver {
     }
   }
 
-  step(lattice) {
+  step(lattice, time = 0) {
     if (this.physicsMode === "spring") {
-      this.stepSpringForces(lattice);
+      this.stepSpringForces(lattice, time);
       return;
     }
 
-    this.stepConstraints(lattice);
+    this.stepConstraints(lattice, time);
   }
 
-  stepSpringForces(lattice) {
+  stepSpringForces(lattice, time) {
     const substeps = Math.max(1, this.iterations);
     const dt = 1 / substeps;
     const dtSquared = dt * dt;
@@ -95,6 +101,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     for (let i = 0; i < substeps; i += 1) {
       this.clearForces(lattice);
       this.applyGravity(lattice);
+      this.applyWind(lattice, time);
       this.applySpringForces(lattice.bonds, springStiffness, this.springDamping);
       this.applySpringForces(lattice.shearSprings, this.shearStiffness, this.shearDamping);
       this.applySpringForces(lattice.bendingConstraints, bendSpringStiffness, this.bendDamping);
@@ -104,7 +111,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     }
   }
 
-  stepConstraints(lattice) {
+  stepConstraints(lattice, time) {
     for (const atom of lattice.atoms) {
       const pinned = this.pinned.get(atom.id);
       if (atom.fixed) {
@@ -125,6 +132,12 @@ window.Atoms.VerletSolver = class VerletSolver {
         atom.position.x += (atom.position.x - atom.previousPosition.x) * this.damping;
         atom.position.y += (atom.position.y - atom.previousPosition.y) * this.damping - this.gravity;
         atom.position.z += (atom.position.z - atom.previousPosition.z) * this.damping;
+        if (this.windEnabled && this.windStrength > 0) {
+          const wind = this.sampleWind(atom, lattice, time);
+          atom.position.x += wind.x;
+          atom.position.y += wind.y;
+          atom.position.z += wind.z;
+        }
         atom.previousPosition.x = x;
         atom.previousPosition.y = y;
         atom.previousPosition.z = z;
@@ -168,6 +181,79 @@ window.Atoms.VerletSolver = class VerletSolver {
       }
 
       atom.force.y -= this.gravity * this.mass;
+    }
+  }
+
+  applyWind(lattice, time) {
+    if (!this.windEnabled || this.windStrength <= 0) {
+      return;
+    }
+
+    for (const atom of lattice.atoms) {
+      if (atom.fixed || this.isHardPinned(atom)) {
+        continue;
+      }
+
+      const wind = this.sampleWind(atom, lattice, time);
+      atom.force.x += wind.x * this.mass;
+      atom.force.y += wind.y * this.mass;
+      atom.force.z += wind.z * this.mass;
+    }
+  }
+
+  sampleWind(atom, lattice, time) {
+    const exposure = this.surfaceExposure(atom, lattice);
+    if (exposure <= 0) {
+      return { x: 0, y: 0, z: 0 };
+    }
+
+    const field = this.sampleWindField(atom.position, time);
+    const strength = this.windStrength * exposure * window.Atoms.clamp(1 + this.windTurbulence * field, 0, 2.5);
+
+    return {
+      x: this.windDirection.x * strength,
+      y: this.windDirection.y * strength,
+      z: this.windDirection.z * strength,
+    };
+  }
+
+  sampleWindField(position, time) {
+    const scale = Math.max(40, this.windScale);
+    const t = time * this.windSpeed;
+    const x = position.x / scale;
+    const y = position.y / scale;
+    const z = position.z / scale;
+
+    const a = Math.sin(x * 1.7 + y * 0.7 + t * 1.9);
+    const b = Math.sin(y * 1.3 - z * 1.1 + t * 1.2 + 1.8);
+    const c = Math.sin((x + z) * 0.9 - y * 0.4 - t * 1.6 + 3.1);
+
+    return (a * 0.5 + b * 0.3 + c * 0.2);
+  }
+
+  surfaceExposure(atom, lattice) {
+    const onX = atom.gridX === 0 || atom.gridX === lattice.width - 1;
+    const onY = atom.gridY === 0 || atom.gridY === lattice.height - 1;
+    const onZ = atom.gridZ === 0 || atom.gridZ === lattice.depth - 1;
+    const xDenominator = Math.max(1, lattice.width - 1);
+    const freeEdgeWeight = 0.35 + 0.65 * (atom.gridX / xDenominator);
+
+    if (lattice.depth === 1) {
+      return freeEdgeWeight;
+    }
+
+    return (onX || onY || onZ) ? 1 : 0.18;
+  }
+
+  getWindDirection(value) {
+    switch (value) {
+      case "z-": return { x: 0, y: 0, z: -1 };
+      case "x+": return { x: 1, y: 0, z: 0 };
+      case "x-": return { x: -1, y: 0, z: 0 };
+      case "y+": return { x: 0, y: 1, z: 0 };
+      case "y-": return { x: 0, y: -1, z: 0 };
+      case "z+":
+      default: return { x: 0, y: 0, z: 1 };
     }
   }
 

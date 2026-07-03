@@ -27,6 +27,12 @@ window.Atoms.ControlPanel = class ControlPanel {
       allowCornerPinEditing: "allowCornerPinEditingInput",
       gravityEnabled: "gravityEnabledInput",
       gravityStrength: "gravityStrengthInput",
+      windEnabled: "windEnabledInput",
+      windDirection: "windDirectionInput",
+      windStrength: "windStrengthInput",
+      windTurbulence: "windTurbulenceInput",
+      windScale: "windScaleInput",
+      windSpeed: "windSpeedInput",
       damping: "dampingInput",
       iterations: "iterationsInput",
       physicsRate: "physicsRateInput",
@@ -158,6 +164,12 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.allowCornerPinEditing = document.getElementById(this.ids.allowCornerPinEditing).checked;
     this.config.gravityEnabled = document.getElementById(this.ids.gravityEnabled).checked;
     this.config.gravityStrength = window.Atoms.readNumber(document.getElementById(this.ids.gravityStrength).value, this.config.gravityStrength, 0, 1.5);
+    this.config.windEnabled = document.getElementById(this.ids.windEnabled).checked;
+    this.config.windDirection = document.getElementById(this.ids.windDirection).value;
+    this.config.windStrength = window.Atoms.readNumber(document.getElementById(this.ids.windStrength).value, this.config.windStrength, 0, 1.5);
+    this.config.windTurbulence = window.Atoms.readNumber(document.getElementById(this.ids.windTurbulence).value, this.config.windTurbulence, 0, 2);
+    this.config.windScale = window.Atoms.readNumber(document.getElementById(this.ids.windScale).value, this.config.windScale, 40, 600);
+    this.config.windSpeed = window.Atoms.readNumber(document.getElementById(this.ids.windSpeed).value, this.config.windSpeed, 0, 5);
     this.config.damping = window.Atoms.readNumber(document.getElementById(this.ids.damping).value, this.config.damping, 0.9, 0.9995);
     this.config.iterations = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.iterations).value, this.config.iterations, 1, 20));
     this.config.physicsRate = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.physicsRate).value, this.config.physicsRate, 30, 240));

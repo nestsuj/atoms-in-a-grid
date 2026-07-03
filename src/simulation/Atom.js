@@ -12,6 +12,9 @@ window.Atoms.Atom = class Atom {
     this.cornerPin = cornerPin;
     this.selected = false;
     this.energy = 0;
+    this.gridX = 0;
+    this.gridY = 0;
+    this.gridZ = 0;
   }
 
   reset() {
