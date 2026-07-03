@@ -10,6 +10,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.physicsMode = config.physicsMode;
     this.damping = config.damping;
     this.stiffness = config.stiffness;
+    this.springDamping = config.springDamping;
     this.bendStiffness = config.bendStiffness;
     this.releaseEnergy = config.releaseEnergy;
     this.dragStrength = config.dragStrength;
@@ -87,8 +88,8 @@ window.Atoms.VerletSolver = class VerletSolver {
     for (let i = 0; i < substeps; i += 1) {
       this.clearForces(lattice);
       this.applyGravity(lattice);
-      this.applySpringForces(lattice.bonds, springStiffness);
-      this.applySpringForces(lattice.bendingConstraints, bendSpringStiffness);
+      this.applySpringForces(lattice.bonds, springStiffness, this.springDamping);
+      this.applySpringForces(lattice.bendingConstraints, bendSpringStiffness, this.springDamping * 0.5);
       this.applyMouseSpringForces();
       this.integrateForces(lattice, substepDamping, dtSquared);
       this.applyLocks(lattice);
@@ -162,7 +163,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     }
   }
 
-  applySpringForces(constraints, stiffness) {
+  applySpringForces(constraints, stiffness, damping = 0) {
     if (stiffness <= 0) {
       return;
     }
@@ -175,10 +176,17 @@ window.Atoms.VerletSolver = class VerletSolver {
       const deltaZ = b.position.z - a.position.z;
       const currentLength = Math.max(Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ), 0.0001);
       const extension = currentLength - constraint.restLength;
-      const force = extension * stiffness;
-      const forceX = (deltaX / currentLength) * force;
-      const forceY = (deltaY / currentLength) * force;
-      const forceZ = (deltaZ / currentLength) * force;
+      const directionX = deltaX / currentLength;
+      const directionY = deltaY / currentLength;
+      const directionZ = deltaZ / currentLength;
+      const relativeVelocityX = (b.position.x - b.previousPosition.x) - (a.position.x - a.previousPosition.x);
+      const relativeVelocityY = (b.position.y - b.previousPosition.y) - (a.position.y - a.previousPosition.y);
+      const relativeVelocityZ = (b.position.z - b.previousPosition.z) - (a.position.z - a.previousPosition.z);
+      const relativeSpeed = relativeVelocityX * directionX + relativeVelocityY * directionY + relativeVelocityZ * directionZ;
+      const force = extension * stiffness + relativeSpeed * damping;
+      const forceX = directionX * force;
+      const forceY = directionY * force;
+      const forceZ = directionZ * force;
       const aLocked = a.fixed || this.isHardPinned(a);
       const bLocked = b.fixed || this.isHardPinned(b);
 
@@ -197,21 +205,18 @@ window.Atoms.VerletSolver = class VerletSolver {
   }
 
   applyMouseSpringForces() {
-    const stiffness = this.dragStrength * 1.6;
+    const stiffness = this.dragStrength * 2.8;
+    const damping = this.springDamping * 2.5;
 
     for (const pin of this.pinned.values()) {
-      if (this.isHardGrab()) {
-        continue;
-      }
-
       const atom = pin.atom;
       if (!atom || atom.fixed) {
         continue;
       }
 
-      atom.force.x += (pin.current.x - atom.position.x) * stiffness;
-      atom.force.y += (pin.current.y - atom.position.y) * stiffness;
-      atom.force.z += (pin.current.z - atom.position.z) * stiffness;
+      atom.force.x += (pin.current.x - atom.position.x) * stiffness - (atom.position.x - atom.previousPosition.x) * damping;
+      atom.force.y += (pin.current.y - atom.position.y) * stiffness - (atom.position.y - atom.previousPosition.y) * damping;
+      atom.force.z += (pin.current.z - atom.position.z) * stiffness - (atom.position.z - atom.previousPosition.z) * damping;
     }
   }
 
@@ -300,7 +305,7 @@ window.Atoms.VerletSolver = class VerletSolver {
   }
 
   isHardGrab() {
-    return this.dragStrength >= 0.995;
+    return this.physicsMode !== "spring" && this.dragStrength >= 0.995;
   }
 
   isHardPinned(atom) {
