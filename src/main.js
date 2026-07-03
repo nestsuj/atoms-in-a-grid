@@ -12,6 +12,11 @@ const drag = new window.Atoms.DragController(canvas, lattice, solver, camera, co
 const pinEdit = new window.Atoms.PinEditController(canvas, lattice, camera, config);
 let paused = false;
 let frame = 0;
+let lastTime = performance.now();
+let accumulator = 0;
+let needsEnergyUpdate = true;
+const maxFrameTime = 250;
+const maxPhysicsSteps = 8;
 
 function configureRuntime() {
   solver.configure(config);
@@ -24,6 +29,8 @@ function rebuild() {
   pinEdit.setLattice(lattice);
   solver.pinned.clear();
   energy.update(lattice);
+  needsEnergyUpdate = false;
+  accumulator = 0;
   updateSceneStats();
 }
 
@@ -32,6 +39,8 @@ function reset() {
   drag.end();
   pinEdit.cancel();
   lattice.reset();
+  needsEnergyUpdate = true;
+  accumulator = 0;
 }
 
 function clearUserPins() {
@@ -39,6 +48,7 @@ function clearUserPins() {
   drag.end();
   pinEdit.cancel();
   lattice.clearUserPins();
+  needsEnergyUpdate = true;
 }
 
 function updateSceneStats() {
@@ -158,19 +168,39 @@ canvas.addEventListener("wheel", (event) => {
   config.zoomVisualScale = Math.sqrt(camera.zoom);
 }, { passive: false });
 
-function animate() {
+function animate(time) {
   requestAnimationFrame(animate);
   configureRuntime();
-  frame += 1;
+  const elapsed = Math.min(maxFrameTime, time - lastTime);
+  lastTime = time;
 
   if (!paused) {
-    solver.step(lattice);
+    const fixedStep = 1000 / config.physicsRate;
+    accumulator += elapsed;
+    let steps = 0;
+
+    while (accumulator >= fixedStep && steps < maxPhysicsSteps) {
+      solver.step(lattice);
+      accumulator -= fixedStep;
+      steps += 1;
+      frame += 1;
+      if (frame % config.energyUpdateRate === 0) {
+        needsEnergyUpdate = true;
+      }
+    }
+
+    if (steps === maxPhysicsSteps) {
+      accumulator = 0;
+    }
+  } else {
+    accumulator = 0;
   }
 
-  if (frame % config.energyUpdateRate === 0) {
+  if (needsEnergyUpdate) {
     energy.update(lattice);
+    needsEnergyUpdate = false;
   }
   renderer.render(lattice, camera);
 }
 
-animate();
+requestAnimationFrame(animate);

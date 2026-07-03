@@ -13,6 +13,8 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.shearStiffness = config.shearStiffness;
     this.springDamping = config.springDamping;
     this.bendStiffness = config.bendStiffness;
+    this.mass = config.atomMass;
+    this.inverseMass = 1 / Math.max(0.1, this.mass);
     this.releaseEnergy = config.releaseEnergy;
     this.dragStrength = config.dragStrength;
     this.gravity = config.gravityEnabled ? config.gravityStrength : 0;
@@ -161,7 +163,7 @@ window.Atoms.VerletSolver = class VerletSolver {
         continue;
       }
 
-      atom.force.y -= this.gravity;
+      atom.force.y -= this.gravity * this.mass;
     }
   }
 
@@ -241,9 +243,9 @@ window.Atoms.VerletSolver = class VerletSolver {
         const x = atom.position.x;
         const y = atom.position.y;
         const z = atom.position.z;
-        atom.position.x += (atom.position.x - atom.previousPosition.x) * damping + atom.force.x * dtSquared;
-        atom.position.y += (atom.position.y - atom.previousPosition.y) * damping + atom.force.y * dtSquared;
-        atom.position.z += (atom.position.z - atom.previousPosition.z) * damping + atom.force.z * dtSquared;
+        atom.position.x += (atom.position.x - atom.previousPosition.x) * damping + atom.force.x * this.inverseMass * dtSquared;
+        atom.position.y += (atom.position.y - atom.previousPosition.y) * damping + atom.force.y * this.inverseMass * dtSquared;
+        atom.position.z += (atom.position.z - atom.previousPosition.z) * damping + atom.force.z * this.inverseMass * dtSquared;
         atom.previousPosition.x = x;
         atom.previousPosition.y = y;
         atom.previousPosition.z = z;

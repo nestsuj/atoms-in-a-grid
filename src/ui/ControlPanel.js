@@ -15,6 +15,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       shearStiffness: "shearStiffnessInput",
       springDamping: "springDampingInput",
       bendStiffness: "bendStiffnessInput",
+      atomMass: "atomMassInput",
       releaseEnergy: "releaseEnergyInput",
       dragStrength: "dragStrengthInput",
       allowCornerPinEditing: "allowCornerPinEditingInput",
@@ -22,6 +23,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       gravityStrength: "gravityStrengthInput",
       damping: "dampingInput",
       iterations: "iterationsInput",
+      physicsRate: "physicsRateInput",
       fastBending: "fastBendingInput",
       fastLargeGridAtoms: "fastLargeGridAtomsInput",
       sortBonds: "sortBondsInput",
@@ -76,6 +78,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.shearStiffness = window.Atoms.readNumber(document.getElementById(this.ids.shearStiffness).value, this.config.shearStiffness, 0, 1);
     this.config.springDamping = window.Atoms.readNumber(document.getElementById(this.ids.springDamping).value, this.config.springDamping, 0, 0.8);
     this.config.bendStiffness = window.Atoms.readNumber(document.getElementById(this.ids.bendStiffness).value, this.config.bendStiffness, 0, 1);
+    this.config.atomMass = window.Atoms.readNumber(document.getElementById(this.ids.atomMass).value, this.config.atomMass, 0.1, 10);
     this.config.releaseEnergy = window.Atoms.readNumber(document.getElementById(this.ids.releaseEnergy).value, this.config.releaseEnergy, 0, 1.5);
     this.config.dragStrength = window.Atoms.readNumber(document.getElementById(this.ids.dragStrength).value, this.config.dragStrength, 0.02, 1);
     this.config.allowCornerPinEditing = document.getElementById(this.ids.allowCornerPinEditing).checked;
@@ -83,6 +86,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.gravityStrength = window.Atoms.readNumber(document.getElementById(this.ids.gravityStrength).value, this.config.gravityStrength, 0, 1.5);
     this.config.damping = window.Atoms.readNumber(document.getElementById(this.ids.damping).value, this.config.damping, 0.9, 0.9995);
     this.config.iterations = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.iterations).value, this.config.iterations, 1, 20));
+    this.config.physicsRate = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.physicsRate).value, this.config.physicsRate, 30, 240));
     this.config.fastBending = document.getElementById(this.ids.fastBending).checked;
     this.config.fastLargeGridAtoms = document.getElementById(this.ids.fastLargeGridAtoms).checked;
     this.config.sortBonds = document.getElementById(this.ids.sortBonds).checked;
