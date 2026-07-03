@@ -27,6 +27,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.windTurbulence = config.windTurbulence;
     this.windScale = config.windScale;
     this.windSpeed = config.windSpeed;
+    this.windDrag = config.windDrag;
     this.windDirection = this.getWindDirection(config.windDirection);
     this.iterations = config.iterations;
     this.bendCadence = config.fastBending ? 2 : 1;
@@ -133,7 +134,7 @@ window.Atoms.VerletSolver = class VerletSolver {
         atom.position.y += (atom.position.y - atom.previousPosition.y) * this.damping - this.gravity;
         atom.position.z += (atom.position.z - atom.previousPosition.z) * this.damping;
         if (this.windEnabled && this.windStrength > 0) {
-          const wind = this.sampleWind(atom, lattice, time);
+          const wind = this.sampleWindForce(atom, lattice, time);
           atom.position.x += wind.x;
           atom.position.y += wind.y;
           atom.position.z += wind.z;
@@ -194,14 +195,35 @@ window.Atoms.VerletSolver = class VerletSolver {
         continue;
       }
 
-      const wind = this.sampleWind(atom, lattice, time);
+      const wind = this.sampleWindForce(atom, lattice, time);
       atom.force.x += wind.x * this.mass;
       atom.force.y += wind.y * this.mass;
       atom.force.z += wind.z * this.mass;
     }
   }
 
-  sampleWind(atom, lattice, time) {
+  sampleWindForce(atom, lattice, time) {
+    const windVelocity = this.sampleWindVelocity(atom, lattice, time);
+    const normal = this.localSurfaceNormal(atom, lattice);
+    const atomVelocityX = atom.position.x - atom.previousPosition.x;
+    const atomVelocityY = atom.position.y - atom.previousPosition.y;
+    const atomVelocityZ = atom.position.z - atom.previousPosition.z;
+    const relativeX = windVelocity.x - atomVelocityX;
+    const relativeY = windVelocity.y - atomVelocityY;
+    const relativeZ = windVelocity.z - atomVelocityZ;
+    const normalSpeed = relativeX * normal.x + relativeY * normal.y + relativeZ * normal.z;
+    const facing = Math.abs(normal.x * this.windDirection.x + normal.y * this.windDirection.y + normal.z * this.windDirection.z);
+    const pressureScale = 0.2 + 0.8 * facing;
+    const drag = this.windDrag;
+
+    return {
+      x: normal.x * normalSpeed * pressureScale + relativeX * drag,
+      y: normal.y * normalSpeed * pressureScale + relativeY * drag,
+      z: normal.z * normalSpeed * pressureScale + relativeZ * drag,
+    };
+  }
+
+  sampleWindVelocity(atom, lattice, time) {
     const exposure = this.surfaceExposure(atom, lattice);
     if (exposure <= 0) {
       return { x: 0, y: 0, z: 0 };
@@ -215,6 +237,34 @@ window.Atoms.VerletSolver = class VerletSolver {
       y: this.windDirection.y * strength,
       z: this.windDirection.z * strength,
     };
+  }
+
+  localSurfaceNormal(atom, lattice) {
+    if (lattice.depth !== 1 || lattice.width < 2 || lattice.height < 2) {
+      return this.windDirection;
+    }
+
+    const left = lattice.atomAt(Math.max(0, atom.gridX - 1), atom.gridY, atom.gridZ);
+    const right = lattice.atomAt(Math.min(lattice.width - 1, atom.gridX + 1), atom.gridY, atom.gridZ);
+    const up = lattice.atomAt(atom.gridX, Math.max(0, atom.gridY - 1), atom.gridZ);
+    const down = lattice.atomAt(atom.gridX, Math.min(lattice.height - 1, atom.gridY + 1), atom.gridZ);
+    const tangentX = {
+      x: right.position.x - left.position.x,
+      y: right.position.y - left.position.y,
+      z: right.position.z - left.position.z,
+    };
+    const tangentY = {
+      x: down.position.x - up.position.x,
+      y: down.position.y - up.position.y,
+      z: down.position.z - up.position.z,
+    };
+    const normal = window.Atoms.normalize(window.Atoms.cross(tangentX, tangentY));
+
+    if (window.Atoms.length(normal) < 0.000001) {
+      return this.windDirection;
+    }
+
+    return normal;
   }
 
   sampleWindField(position, time) {
