@@ -1,10 +1,12 @@
 const canvas = document.getElementById("scene");
 const sceneStats = document.getElementById("sceneStats");
+const physicsStats = document.getElementById("physicsStats");
 const config = { ...window.Atoms.defaultConfig, zoomVisualScale: 1 };
 const camera = new window.Atoms.Camera(config);
 let lattice = new window.Atoms.Lattice(config);
 const solver = new window.Atoms.VerletSolver(config);
 const energy = new window.Atoms.EnergyModel(config);
+const diagnostics = new window.Atoms.Diagnostics(config);
 const renderer = new window.Atoms.CanvasRenderer(canvas, config);
 const pointer = new window.Atoms.PointerController(canvas);
 const orbit = new window.Atoms.OrbitController(camera);
@@ -17,6 +19,7 @@ let accumulator = 0;
 let needsEnergyUpdate = true;
 const maxFrameTime = 250;
 const maxPhysicsSteps = 8;
+const pressedKeys = new Set();
 
 function configureRuntime() {
   solver.configure(config);
@@ -58,6 +61,27 @@ function updateSceneStats() {
     `<div><span>Shear</span>${lattice.shearSprings.length.toLocaleString()}</div>`,
     `<div><span>Bending</span>${lattice.bendingConstraints.length.toLocaleString()}</div>`,
   ].join("");
+}
+
+function updatePhysicsStats(steps) {
+  const values = diagnostics.update(lattice, config.physicsRate);
+  physicsStats.innerHTML = [
+    `<div><span>Kinetic</span>${formatMetric(values.kineticEnergy)}</div>`,
+    `<div><span>Spring E</span>${formatMetric(values.springEnergy)}</div>`,
+    `<div><span>Max strain</span>${formatPercent(values.maxStrain)}</div>`,
+    `<div><span>Avg strain</span>${formatPercent(values.averageStrain)}</div>`,
+    `<div><span>Steps</span>${steps}</div>`,
+  ].join("");
+}
+
+function formatMetric(value) {
+  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}m`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+  return value.toFixed(1);
+}
+
+function formatPercent(value) {
+  return `${(value * 100).toFixed(1)}%`;
 }
 
 new window.Atoms.ControlPanel(config, {
@@ -168,16 +192,52 @@ canvas.addEventListener("wheel", (event) => {
   config.zoomVisualScale = Math.sqrt(camera.zoom);
 }, { passive: false });
 
+window.addEventListener("keydown", (event) => {
+  const key = event.key.toLowerCase();
+  if (!["w", "a", "s", "d"].includes(key) || isTextInput(event.target)) {
+    return;
+  }
+
+  event.preventDefault();
+  pressedKeys.add(key);
+});
+
+window.addEventListener("keyup", (event) => {
+  pressedKeys.delete(event.key.toLowerCase());
+});
+
+function isTextInput(target) {
+  return target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement;
+}
+
+function updateKeyboardPan(elapsed) {
+  const right = Number(pressedKeys.has("d")) - Number(pressedKeys.has("a"));
+  const up = Number(pressedKeys.has("w")) - Number(pressedKeys.has("s"));
+
+  if (right === 0 && up === 0) {
+    return;
+  }
+
+  const length = Math.hypot(right, up) || 1;
+  const speed = 420;
+  const scale = (speed * elapsed) / 1000 / length;
+  camera.pan(right * scale, up * scale);
+  drag.syncAfterCameraChange();
+  pinEdit.syncAfterCameraChange();
+}
+
 function animate(time) {
   requestAnimationFrame(animate);
   configureRuntime();
   const elapsed = Math.min(maxFrameTime, time - lastTime);
   lastTime = time;
+  let steps = 0;
+
+  updateKeyboardPan(elapsed);
 
   if (!paused) {
     const fixedStep = 1000 / config.physicsRate;
     accumulator += elapsed;
-    let steps = 0;
 
     while (accumulator >= fixedStep && steps < maxPhysicsSteps) {
       solver.step(lattice);
@@ -200,6 +260,7 @@ function animate(time) {
     energy.update(lattice);
     needsEnergyUpdate = false;
   }
+  updatePhysicsStats(steps);
   renderer.render(lattice, camera);
 }
 

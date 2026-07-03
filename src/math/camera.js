@@ -29,6 +29,11 @@ window.Atoms.Camera = class Camera {
     this.setZoom(this.zoom * factor);
   }
 
+  pan(deltaX, deltaY) {
+    this.center.x += deltaX;
+    this.center.y += deltaY;
+  }
+
   getBasis() {
     const cosY = Math.cos(this.rotationY);
     const sinY = Math.sin(this.rotationY);

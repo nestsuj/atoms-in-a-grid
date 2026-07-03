@@ -11,6 +11,7 @@
     <section class="viewport" aria-label="Simulation view">
       <canvas id="scene" aria-label="Interactive atom lattice simulation"></canvas>
       <div id="sceneStats" class="scene-stats" aria-live="polite"></div>
+      <div id="physicsStats" class="physics-stats" aria-live="polite"></div>
     </section>
 
     <aside class="panel" aria-label="Simulation controls">
@@ -22,7 +23,7 @@
       <div class="panel__body">
         <details class="panel-section help" open>
           <summary>Interaction</summary>
-          <p>Left-drag an atom to deform the lattice. Shift-click an atom to add or remove a fixed point. Shift-drag a fixed point to move it. Right-drag or middle-drag to rotate, including while an atom is being dragged. Use the mouse wheel to zoom.</p>
+          <p>Left-drag an atom to deform the lattice. Shift-click an atom to add or remove a fixed point. Shift-drag a fixed point to move it. Right-drag or middle-drag to rotate, including while an atom is being dragged. Use W/A/S/D to pan and the mouse wheel to zoom.</p>
         </details>
 
         <details class="panel-section" open>
@@ -202,6 +203,7 @@
   <script src="./src/simulation/Lattice.js"></script>
   <script src="./src/simulation/VerletSolver.js"></script>
   <script src="./src/simulation/EnergyModel.js"></script>
+  <script src="./src/simulation/Diagnostics.js"></script>
   <script src="./src/rendering/DrawStyle.js"></script>
   <script src="./src/rendering/CanvasRenderer.js"></script>
   <script src="./src/input/PointerController.js"></script>
