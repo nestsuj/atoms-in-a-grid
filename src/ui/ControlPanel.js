@@ -16,7 +16,9 @@ window.Atoms.ControlPanel = class ControlPanel {
       stiffness: "stiffnessInput",
       shearStiffness: "shearStiffnessInput",
       springDamping: "springDampingInput",
+      shearDamping: "shearDampingInput",
       bendStiffness: "bendStiffnessInput",
+      bendDamping: "bendDampingInput",
       atomMass: "atomMassInput",
       releaseEnergy: "releaseEnergyInput",
       dragStrength: "dragStrengthInput",
@@ -145,7 +147,9 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.stiffness = window.Atoms.readNumber(document.getElementById(this.ids.stiffness).value, this.config.stiffness, 0.02, 1);
     this.config.shearStiffness = window.Atoms.readNumber(document.getElementById(this.ids.shearStiffness).value, this.config.shearStiffness, 0, 1);
     this.config.springDamping = window.Atoms.readNumber(document.getElementById(this.ids.springDamping).value, this.config.springDamping, 0, 0.8);
+    this.config.shearDamping = window.Atoms.readNumber(document.getElementById(this.ids.shearDamping).value, this.config.shearDamping, 0, 0.8);
     this.config.bendStiffness = window.Atoms.readNumber(document.getElementById(this.ids.bendStiffness).value, this.config.bendStiffness, 0, 1);
+    this.config.bendDamping = window.Atoms.readNumber(document.getElementById(this.ids.bendDamping).value, this.config.bendDamping, 0, 0.8);
     this.config.atomMass = window.Atoms.readNumber(document.getElementById(this.ids.atomMass).value, this.config.atomMass, 0.1, 10);
     this.config.releaseEnergy = window.Atoms.readNumber(document.getElementById(this.ids.releaseEnergy).value, this.config.releaseEnergy, 0, 1.5);
     this.config.dragStrength = window.Atoms.readNumber(document.getElementById(this.ids.dragStrength).value, this.config.dragStrength, 0.02, 1);

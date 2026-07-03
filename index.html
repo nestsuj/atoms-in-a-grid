@@ -105,12 +105,22 @@
             <label>
               Spring damping
               <input id="springDampingInput" type="range" min="0" max="0.8" step="0.01">
-              <span>Velocity damping along spring lengths. Higher values reduce wobble in spring mode.</span>
+              <span>Velocity damping along visible structural bonds. Higher values reduce bond-length ringing.</span>
+            </label>
+            <label>
+              Shear damping
+              <input id="shearDampingInput" type="range" min="0" max="0.8" step="0.01">
+              <span>Velocity damping along hidden diagonal springs. Higher values quiet skewing and diamonding.</span>
             </label>
             <label>
               Bend stiffness
               <input id="bendStiffnessInput" type="range" min="0" max="1" step="0.01">
               <span>Longer-range spring strength that resists sharp bends and preserves rows.</span>
+            </label>
+            <label>
+              Bend damping
+              <input id="bendDampingInput" type="range" min="0" max="0.8" step="0.01">
+              <span>Velocity damping along longer-range bend springs. Higher values calm folds without stiffening them.</span>
             </label>
             <label>
               Atom mass
@@ -159,7 +169,7 @@
             <label>
               Damping
               <input id="dampingInput" type="range" min="0.9" max="0.9995" step="0.0005">
-              <span>Energy retained each frame. Higher values ring longer.</span>
+              <span>Global motion retained each frame. Higher values ring longer across all motion categories.</span>
             </label>
             <label>
               Iterations
@@ -239,24 +249,24 @@
     </aside>
   </main>
 
-  <script src="./src/config.js?v=20260703c"></script>
-  <script src="./src/math/vec3.js?v=20260703c"></script>
-  <script src="./src/math/camera.js?v=20260703c"></script>
-  <script src="./src/math/projection.js?v=20260703c"></script>
-  <script src="./src/simulation/Atom.js?v=20260703c"></script>
-  <script src="./src/simulation/Bond.js?v=20260703c"></script>
-  <script src="./src/simulation/BendingConstraint.js?v=20260703c"></script>
-  <script src="./src/simulation/Lattice.js?v=20260703c"></script>
-  <script src="./src/simulation/VerletSolver.js?v=20260703c"></script>
-  <script src="./src/simulation/EnergyModel.js?v=20260703c"></script>
-  <script src="./src/simulation/Diagnostics.js?v=20260703c"></script>
-  <script src="./src/rendering/DrawStyle.js?v=20260703c"></script>
-  <script src="./src/rendering/CanvasRenderer.js?v=20260703c"></script>
-  <script src="./src/input/PointerController.js?v=20260703c"></script>
-  <script src="./src/input/OrbitController.js?v=20260703c"></script>
-  <script src="./src/input/DragController.js?v=20260703c"></script>
-  <script src="./src/input/PinEditController.js?v=20260703c"></script>
-  <script src="./src/ui/ControlPanel.js?v=20260703c"></script>
-  <script src="./src/main.js?v=20260703c"></script>
+  <script src="./src/config.js?v=20260703d"></script>
+  <script src="./src/math/vec3.js?v=20260703d"></script>
+  <script src="./src/math/camera.js?v=20260703d"></script>
+  <script src="./src/math/projection.js?v=20260703d"></script>
+  <script src="./src/simulation/Atom.js?v=20260703d"></script>
+  <script src="./src/simulation/Bond.js?v=20260703d"></script>
+  <script src="./src/simulation/BendingConstraint.js?v=20260703d"></script>
+  <script src="./src/simulation/Lattice.js?v=20260703d"></script>
+  <script src="./src/simulation/VerletSolver.js?v=20260703d"></script>
+  <script src="./src/simulation/EnergyModel.js?v=20260703d"></script>
+  <script src="./src/simulation/Diagnostics.js?v=20260703d"></script>
+  <script src="./src/rendering/DrawStyle.js?v=20260703d"></script>
+  <script src="./src/rendering/CanvasRenderer.js?v=20260703d"></script>
+  <script src="./src/input/PointerController.js?v=20260703d"></script>
+  <script src="./src/input/OrbitController.js?v=20260703d"></script>
+  <script src="./src/input/DragController.js?v=20260703d"></script>
+  <script src="./src/input/PinEditController.js?v=20260703d"></script>
+  <script src="./src/ui/ControlPanel.js?v=20260703d"></script>
+  <script src="./src/main.js?v=20260703d"></script>
 </body>
 </html>
