@@ -34,6 +34,13 @@ function reset() {
   lattice.reset();
 }
 
+function clearUserPins() {
+  solver.pinned.clear();
+  drag.end();
+  pinEdit.cancel();
+  lattice.clearUserPins();
+}
+
 function updateSceneStats() {
   sceneStats.innerHTML = [
     `<div><span>Atoms</span>${lattice.atoms.length.toLocaleString()}</div>`,
@@ -46,6 +53,7 @@ new window.Atoms.ControlPanel(config, {
   onConfigure: configureRuntime,
   onRebuild: rebuild,
   onReset: reset,
+  onClearUserPins: clearUserPins,
   onTogglePause: () => {
     paused = !paused;
     return paused;

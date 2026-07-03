@@ -114,4 +114,15 @@ window.Atoms.Lattice = class Lattice {
       atom.reset();
     }
   }
+
+  clearUserPins() {
+    for (const atom of this.atoms) {
+      if (atom.cornerPin || !atom.fixed) {
+        continue;
+      }
+
+      atom.fixed = false;
+      window.Atoms.copy(atom.previousPosition, atom.position);
+    }
+  }
 };
