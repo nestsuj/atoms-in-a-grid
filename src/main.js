@@ -68,26 +68,32 @@ canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 canvas.addEventListener("pointerdown", (event) => {
   canvas.setPointerCapture(event.pointerId);
   const point = pointer.getPoint(event);
-  const wantsOrbit = event.button === 1 || event.button === 2;
 
-  if (!wantsOrbit && drag.begin(point)) {
+  if (event.button === 0 && drag.begin(point)) {
     return;
   }
 
-  if (wantsOrbit) {
+  if (event.button === 1 || event.button === 2) {
     orbit.begin(point);
   }
 });
 
 canvas.addEventListener("pointermove", (event) => {
   const point = pointer.getPoint(event);
+  const isLeftDown = (event.buttons & 1) !== 0;
+  const isOrbitButtonDown = (event.buttons & 2) !== 0 || (event.buttons & 4) !== 0;
+
+  if (drag.isActive() && !isLeftDown) {
+    drag.end();
+  }
+
   drag.move(point);
 
-  if (drag.isActive() && (event.shiftKey || event.altKey) && !orbit.active) {
+  if (drag.isActive() && isOrbitButtonDown && !orbit.active) {
     orbit.begin(point);
   }
 
-  if (drag.isActive() && !event.shiftKey && !event.altKey && orbit.active) {
+  if (orbit.active && !isOrbitButtonDown) {
     orbit.end();
   }
 
@@ -99,9 +105,17 @@ canvas.addEventListener("pointermove", (event) => {
 });
 
 canvas.addEventListener("pointerup", (event) => {
-  canvas.releasePointerCapture(event.pointerId);
-  drag.end();
-  orbit.end();
+  if (drag.isActive() && (event.buttons & 1) === 0) {
+    drag.end();
+  }
+
+  if (orbit.active && (event.buttons & 2) === 0 && (event.buttons & 4) === 0) {
+    orbit.end();
+  }
+
+  if (event.buttons === 0 && canvas.hasPointerCapture(event.pointerId)) {
+    canvas.releasePointerCapture(event.pointerId);
+  }
 });
 
 canvas.addEventListener("pointercancel", () => {
