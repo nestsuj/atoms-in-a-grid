@@ -22,12 +22,13 @@ window.Atoms.Lattice = class Lattice {
       for (let y = 0; y < this.height; y += 1) {
         for (let x = 0; x < this.width; x += 1) {
           const id = this.index(x, y, z);
+          const cornerPin = this.isCorner(x, y, z);
           const position = window.Atoms.vec3(
             x * this.restLength - offsetX,
             y * this.restLength - offsetY,
             z * this.restLength - offsetZ,
           );
-          this.atoms.push(new window.Atoms.Atom(id, position, this.isCorner(x, y, z)));
+          this.atoms.push(new window.Atoms.Atom(id, position, cornerPin, cornerPin));
         }
       }
     }

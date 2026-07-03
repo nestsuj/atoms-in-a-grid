@@ -69,8 +69,8 @@ window.Atoms.VerletSolver = class VerletSolver {
     for (const atom of lattice.atoms) {
       const pinned = this.pinned.get(atom.id);
       if (atom.fixed) {
-        window.Atoms.copy(atom.position, atom.restPosition);
-        window.Atoms.copy(atom.previousPosition, atom.restPosition);
+        window.Atoms.copy(atom.position, atom.fixedPosition);
+        window.Atoms.copy(atom.previousPosition, atom.fixedPosition);
       } else if (pinned && this.isHardGrab()) {
         window.Atoms.copy(atom.position, pinned.current);
         atom.previousPosition.x = pinned.current.x - pinned.velocity.x;
@@ -152,7 +152,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     for (const atom of lattice.atoms) {
       const pinned = this.pinned.get(atom.id);
       if (atom.fixed) {
-        window.Atoms.copy(atom.position, atom.restPosition);
+        window.Atoms.copy(atom.position, atom.fixedPosition);
       } else if (pinned && this.isHardGrab()) {
         window.Atoms.copy(atom.position, pinned.current);
       }

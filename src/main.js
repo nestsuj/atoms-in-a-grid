@@ -9,6 +9,7 @@ const renderer = new window.Atoms.CanvasRenderer(canvas, config);
 const pointer = new window.Atoms.PointerController(canvas);
 const orbit = new window.Atoms.OrbitController(camera);
 const drag = new window.Atoms.DragController(canvas, lattice, solver, camera, config);
+const pinEdit = new window.Atoms.PinEditController(canvas, lattice, camera, config);
 let paused = false;
 let frame = 0;
 
@@ -20,6 +21,7 @@ function configureRuntime() {
 function rebuild() {
   lattice = new window.Atoms.Lattice(config);
   drag.setLattice(lattice);
+  pinEdit.setLattice(lattice);
   solver.pinned.clear();
   energy.update(lattice);
   updateSceneStats();
@@ -28,6 +30,7 @@ function rebuild() {
 function reset() {
   solver.pinned.clear();
   drag.end();
+  pinEdit.cancel();
   lattice.reset();
 }
 
@@ -69,6 +72,10 @@ canvas.addEventListener("pointerdown", (event) => {
   canvas.setPointerCapture(event.pointerId);
   const point = pointer.getPoint(event);
 
+  if (event.button === 0 && event.shiftKey && pinEdit.begin(point)) {
+    return;
+  }
+
   if (event.button === 0 && drag.begin(point)) {
     return;
   }
@@ -83,13 +90,18 @@ canvas.addEventListener("pointermove", (event) => {
   const isLeftDown = (event.buttons & 1) !== 0;
   const isOrbitButtonDown = (event.buttons & 2) !== 0 || (event.buttons & 4) !== 0;
 
+  if (pinEdit.isActive() && !isLeftDown) {
+    pinEdit.end();
+  }
+
   if (drag.isActive() && !isLeftDown) {
     drag.end();
   }
 
+  pinEdit.move(point);
   drag.move(point);
 
-  if (drag.isActive() && isOrbitButtonDown && !orbit.active) {
+  if ((drag.isActive() || pinEdit.isActive()) && isOrbitButtonDown && !orbit.active) {
     orbit.begin(point);
   }
 
@@ -100,11 +112,16 @@ canvas.addEventListener("pointermove", (event) => {
   if (orbit.active) {
     orbit.move(point);
     drag.syncAfterCameraChange();
+    pinEdit.syncAfterCameraChange();
     config.zoomVisualScale = Math.sqrt(camera.zoom);
   }
 });
 
 canvas.addEventListener("pointerup", (event) => {
+  if (pinEdit.isActive() && (event.buttons & 1) === 0) {
+    pinEdit.end();
+  }
+
   if (drag.isActive() && (event.buttons & 1) === 0) {
     drag.end();
   }
@@ -120,6 +137,7 @@ canvas.addEventListener("pointerup", (event) => {
 
 canvas.addEventListener("pointercancel", () => {
   drag.end();
+  pinEdit.cancel();
   orbit.end();
 });
 
@@ -127,6 +145,7 @@ canvas.addEventListener("wheel", (event) => {
   event.preventDefault();
   orbit.zoom(event.deltaY);
   drag.syncAfterCameraChange();
+  pinEdit.syncAfterCameraChange();
   config.zoomVisualScale = Math.sqrt(camera.zoom);
 }, { passive: false });
 

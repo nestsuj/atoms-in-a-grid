@@ -22,7 +22,7 @@
       <div class="panel__body">
         <details class="panel-section help" open>
           <summary>Interaction</summary>
-          <p>Left-drag an atom to deform the lattice. Right-drag or middle-drag to rotate, including while an atom is being dragged. Use the mouse wheel to zoom.</p>
+          <p>Left-drag an atom to deform the lattice. Shift-click an atom to add or remove a fixed point. Shift-drag a fixed point to move it. Right-drag or middle-drag to rotate, including while an atom is being dragged. Use the mouse wheel to zoom.</p>
         </details>
 
         <details class="panel-section" open>
@@ -78,6 +78,13 @@
               Mouse spring
               <input id="dragStrengthInput" type="range" min="0.02" max="1" step="0.01">
               <span>How tightly a dragged atom follows the cursor. 1 is pinned.</span>
+            </label>
+            <label class="checkbox-control">
+              <input id="allowCornerPinEditingInput" type="checkbox">
+              <span class="checkbox-text">
+                Edit corner pins
+                <small>Allows Shift-click and Shift-drag to remove or move the original fixed corner atoms.</small>
+              </span>
             </label>
             <label class="checkbox-control">
               <input id="gravityEnabledInput" type="checkbox">
@@ -171,6 +178,7 @@
   <script src="./src/input/PointerController.js"></script>
   <script src="./src/input/OrbitController.js"></script>
   <script src="./src/input/DragController.js"></script>
+  <script src="./src/input/PinEditController.js"></script>
   <script src="./src/ui/ControlPanel.js"></script>
   <script src="./src/main.js"></script>
 </body>
