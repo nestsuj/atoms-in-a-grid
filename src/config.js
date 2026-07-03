@@ -14,6 +14,8 @@ window.Atoms.defaultConfig = Object.freeze({
   atomMass: 1,
   releaseEnergy: 0.85,
   dragStrength: 1,
+  mouseStiffness: 2.8,
+  mouseDamping: 0.4,
   allowCornerPinEditing: false,
   gravityEnabled: false,
   gravityStrength: 0.18,

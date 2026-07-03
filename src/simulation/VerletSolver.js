@@ -17,6 +17,8 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.inverseMass = 1 / Math.max(0.1, this.mass);
     this.releaseEnergy = config.releaseEnergy;
     this.dragStrength = config.dragStrength;
+    this.mouseStiffness = config.mouseStiffness;
+    this.mouseDamping = config.mouseDamping;
     this.gravity = config.gravityEnabled ? config.gravityStrength : 0;
     this.iterations = config.iterations;
     this.bendCadence = config.fastBending ? 2 : 1;
@@ -209,8 +211,8 @@ window.Atoms.VerletSolver = class VerletSolver {
   }
 
   applyMouseSpringForces() {
-    const stiffness = this.dragStrength * 2.8;
-    const damping = this.springDamping * 2.5;
+    const stiffness = this.mouseStiffness;
+    const damping = this.mouseDamping;
 
     for (const pin of this.pinned.values()) {
       const atom = pin.atom;

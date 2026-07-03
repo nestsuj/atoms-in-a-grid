@@ -18,6 +18,8 @@ window.Atoms.ControlPanel = class ControlPanel {
       atomMass: "atomMassInput",
       releaseEnergy: "releaseEnergyInput",
       dragStrength: "dragStrengthInput",
+      mouseStiffness: "mouseStiffnessInput",
+      mouseDamping: "mouseDampingInput",
       allowCornerPinEditing: "allowCornerPinEditingInput",
       gravityEnabled: "gravityEnabledInput",
       gravityStrength: "gravityStrengthInput",
@@ -81,6 +83,8 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.atomMass = window.Atoms.readNumber(document.getElementById(this.ids.atomMass).value, this.config.atomMass, 0.1, 10);
     this.config.releaseEnergy = window.Atoms.readNumber(document.getElementById(this.ids.releaseEnergy).value, this.config.releaseEnergy, 0, 1.5);
     this.config.dragStrength = window.Atoms.readNumber(document.getElementById(this.ids.dragStrength).value, this.config.dragStrength, 0.02, 1);
+    this.config.mouseStiffness = window.Atoms.readNumber(document.getElementById(this.ids.mouseStiffness).value, this.config.mouseStiffness, 0, 8);
+    this.config.mouseDamping = window.Atoms.readNumber(document.getElementById(this.ids.mouseDamping).value, this.config.mouseDamping, 0, 4);
     this.config.allowCornerPinEditing = document.getElementById(this.ids.allowCornerPinEditing).checked;
     this.config.gravityEnabled = document.getElementById(this.ids.gravityEnabled).checked;
     this.config.gravityStrength = window.Atoms.readNumber(document.getElementById(this.ids.gravityStrength).value, this.config.gravityStrength, 0, 1.5);

@@ -101,7 +101,17 @@
             <label>
               Mouse spring
               <input id="dragStrengthInput" type="range" min="0.02" max="1" step="0.01">
-              <span>How tightly a dragged atom follows the cursor. 1 is pinned.</span>
+              <span>How tightly a dragged atom follows the cursor in constraint mode. 1 is pinned.</span>
+            </label>
+            <label>
+              Mouse stiffness
+              <input id="mouseStiffnessInput" type="range" min="0" max="8" step="0.1">
+              <span>Spring-mode force pulling a dragged atom toward the cursor.</span>
+            </label>
+            <label>
+              Mouse damping
+              <input id="mouseDampingInput" type="range" min="0" max="4" step="0.05">
+              <span>Spring-mode damping applied to the dragged atom. Higher values reduce release wobble.</span>
             </label>
             <label class="checkbox-control">
               <input id="allowCornerPinEditingInput" type="checkbox">
