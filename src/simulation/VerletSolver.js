@@ -110,10 +110,13 @@ window.Atoms.VerletSolver = class VerletSolver {
       this.applyMouseSpringForces();
       this.integrateForces(lattice, substepDamping, dtSquared);
       this.applyLocks(lattice);
+      this.preserveWindNeutralHeight(lattice);
     }
   }
 
   stepConstraints(lattice, time) {
+    const windVerticalBias = this.windVerticalBias(lattice, time);
+
     for (const atom of lattice.atoms) {
       const pinned = this.pinned.get(atom.id);
       if (atom.fixed) {
@@ -137,7 +140,7 @@ window.Atoms.VerletSolver = class VerletSolver {
         if (this.windEnabled && this.windStrength > 0) {
           const wind = this.sampleWindForce(atom, lattice, time);
           atom.position.x += wind.x;
-          atom.position.y += wind.y;
+          atom.position.y += wind.y - windVerticalBias;
           atom.position.z += wind.z;
         }
         atom.previousPosition.x = x;
@@ -162,6 +165,8 @@ window.Atoms.VerletSolver = class VerletSolver {
       }
       this.applyLocks(lattice);
     }
+
+    this.preserveWindNeutralHeight(lattice);
   }
 
   clearForces(lattice) {
@@ -191,6 +196,8 @@ window.Atoms.VerletSolver = class VerletSolver {
       return;
     }
 
+    const verticalBias = this.windVerticalBias(lattice, time);
+
     for (const atom of lattice.atoms) {
       if (atom.fixed || this.isHardPinned(atom)) {
         continue;
@@ -198,8 +205,64 @@ window.Atoms.VerletSolver = class VerletSolver {
 
       const wind = this.sampleWindForce(atom, lattice, time);
       atom.force.x += wind.x * this.mass;
-      atom.force.y += wind.y * this.mass;
+      atom.force.y += (wind.y - verticalBias) * this.mass;
       atom.force.z += wind.z * this.mass;
+    }
+  }
+
+  windVerticalBias(lattice, time) {
+    if (!this.windEnabled || this.windStrength <= 0 || lattice.depth !== 1) {
+      return 0;
+    }
+
+    let total = 0;
+    let count = 0;
+
+    for (const atom of lattice.atoms) {
+      if (atom.fixed || this.isHardPinned(atom)) {
+        continue;
+      }
+
+      total += this.sampleWindForce(atom, lattice, time).y;
+      count += 1;
+    }
+
+    return count > 0 ? total / count : 0;
+  }
+
+  preserveWindNeutralHeight(lattice) {
+    if (!this.windEnabled || lattice.depth !== 1 || this.windDirection.y !== 0 || this.gravity > 0.000001) {
+      return;
+    }
+
+    let total = 0;
+    let count = 0;
+
+    for (const atom of lattice.atoms) {
+      if (atom.fixed || this.isHardPinned(atom)) {
+        continue;
+      }
+
+      total += atom.position.y - atom.restPosition.y;
+      count += 1;
+    }
+
+    if (count === 0) {
+      return;
+    }
+
+    const offset = total / count;
+    if (Math.abs(offset) < 0.000001) {
+      return;
+    }
+
+    for (const atom of lattice.atoms) {
+      if (atom.fixed || this.isHardPinned(atom)) {
+        continue;
+      }
+
+      atom.position.y -= offset;
+      atom.previousPosition.y -= offset;
     }
   }
 
@@ -220,14 +283,20 @@ window.Atoms.VerletSolver = class VerletSolver {
     const pressureScale = 0.2 + 0.8 * facing;
     const flutter = this.sampleFlutter(atom, lattice, time);
     const normalDrag = this.windDrag;
-    const skinDrag = this.windDrag * 0.08;
+    const skinDrag = this.windDrag * 0.01;
     const pressure = normalSpeed * pressureScale + flutter + normalSpeed * normalDrag;
 
-    return {
+    const force = {
       x: normal.x * pressure + tangentX * skinDrag,
       y: normal.y * pressure + tangentY * skinDrag,
       z: normal.z * pressure + tangentZ * skinDrag,
     };
+
+    if (lattice.depth === 1 && this.windDirection.y === 0) {
+      force.y = 0;
+    }
+
+    return force;
   }
 
   sampleFlutter(atom, lattice, time) {
@@ -237,10 +306,9 @@ window.Atoms.VerletSolver = class VerletSolver {
 
     const exposure = this.surfaceExposure(atom, lattice);
     const xRatio = lattice.width > 1 ? atom.gridX / (lattice.width - 1) : 1;
-    const yRatio = lattice.height > 1 ? atom.gridY / (lattice.height - 1) : 0.5;
     const phase = time * this.windSpeed * 5.2;
     const traveling = Math.sin(xRatio * Math.PI * 3.4 - phase);
-    const crossWave = Math.sin(yRatio * Math.PI * 2.1 + phase * 0.73 + atom.gridX * 0.31);
+    const crossWave = Math.sin(xRatio * Math.PI * 1.2 + phase * 0.73 + atom.gridX * 0.31);
     const signedWave = traveling * 0.72 + crossWave * 0.28;
     const freeEdgeGain = 0.25 + 0.75 * xRatio;
 
