@@ -29,10 +29,23 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.windSpeed = config.windSpeed;
     this.windDrag = config.windDrag;
     this.windFlutter = config.windFlutter;
+    this.windResponse = config.windResponse;
+    this.windDirectionId = config.windDirection;
     this.windDirection = this.getWindDirection(config.windDirection);
     this.iterations = config.iterations;
     this.bendCadence = config.fastBending ? 2 : 1;
     this.effectiveBendStiffness = Math.min(1, this.bendStiffness * this.bendCadence);
+    this.windStats = this.windStats || this.emptyWindStats();
+  }
+
+  emptyWindStats() {
+    return {
+      totalForce: 0,
+      maxForce: 0,
+      samples: 0,
+      averageForce: 0,
+      direction: "off",
+    };
   }
 
   pin(atom, position) {
@@ -187,11 +200,17 @@ window.Atoms.VerletSolver = class VerletSolver {
   }
 
   applyWind(lattice, time) {
+    this.windStats = this.emptyWindStats();
+    this.windStats.direction = this.windDirectionLabel();
+
     if (!this.windEnabled || this.windStrength <= 0) {
       return;
     }
 
     this.applySurfaceWind(lattice, time);
+    this.windStats.averageForce = this.windStats.samples > 0
+      ? this.windStats.totalForce / this.windStats.samples
+      : 0;
   }
 
   sampleParticleWindForce(atom, lattice, time) {
@@ -201,9 +220,9 @@ window.Atoms.VerletSolver = class VerletSolver {
     const atomVelocityZ = atom.position.z - atom.previousPosition.z;
 
     return {
-      x: (windVelocity.x - atomVelocityX) * this.windDrag * 0.02,
-      y: (windVelocity.y - atomVelocityY) * this.windDrag * 0.02,
-      z: (windVelocity.z - atomVelocityZ) * this.windDrag * 0.02,
+      x: (windVelocity.x - atomVelocityX) * this.windDrag * this.windResponse * 0.02,
+      y: (windVelocity.y - atomVelocityY) * this.windDrag * this.windResponse * 0.02,
+      z: (windVelocity.z - atomVelocityZ) * this.windDrag * this.windResponse * 0.02,
     };
   }
 
@@ -320,8 +339,8 @@ window.Atoms.VerletSolver = class VerletSolver {
       z: relative.z - normal.z * normalSpeed,
     };
     const areaScale = doubleArea / (2 * lattice.restLength * lattice.restLength);
-    const pressure = normalSpeed * Math.abs(normalSpeed) * (0.65 + this.windDrag * 0.7) * areaScale;
-    const skin = this.windDrag * 0.01 * areaScale;
+    const pressure = normalSpeed * Math.abs(normalSpeed) * (0.65 + this.windDrag * 0.7) * this.windResponse * areaScale;
+    const skin = this.windDrag * this.windResponse * 0.01 * areaScale;
     const force = {
       x: normal.x * pressure + tangent.x * skin,
       y: normal.y * pressure + tangent.y * skin,
@@ -338,9 +357,17 @@ window.Atoms.VerletSolver = class VerletSolver {
       return;
     }
 
-    atom.force.x += force.x * share * this.mass;
-    atom.force.y += force.y * share * this.mass;
-    atom.force.z += force.z * share * this.mass;
+    const forceX = force.x * share * this.mass;
+    const forceY = force.y * share * this.mass;
+    const forceZ = force.z * share * this.mass;
+    const forceLength = Math.hypot(forceX, forceY, forceZ);
+
+    atom.force.x += forceX;
+    atom.force.y += forceY;
+    atom.force.z += forceZ;
+    this.windStats.totalForce += forceLength;
+    this.windStats.maxForce = Math.max(this.windStats.maxForce, forceLength);
+    this.windStats.samples += 1;
   }
 
   sampleFlutter(position, time) {
@@ -427,6 +454,14 @@ window.Atoms.VerletSolver = class VerletSolver {
       case "z+":
       default: return { x: 0, y: 0, z: 1 };
     }
+  }
+
+  windDirectionLabel() {
+    if (!this.windEnabled || this.windStrength <= 0) {
+      return "off";
+    }
+
+    return this.windDirectionId;
   }
 
   applySpringForces(constraints, stiffness, damping = 0) {

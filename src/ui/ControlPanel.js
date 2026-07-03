@@ -35,6 +35,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       windSpeed: "windSpeedInput",
       windDrag: "windDragInput",
       windFlutter: "windFlutterInput",
+      windResponse: "windResponseInput",
       damping: "dampingInput",
       iterations: "iterationsInput",
       physicsRate: "physicsRateInput",
@@ -176,6 +177,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.windSpeed = window.Atoms.readNumber(document.getElementById(this.ids.windSpeed).value, this.config.windSpeed, 0, 5);
     this.config.windDrag = window.Atoms.readNumber(document.getElementById(this.ids.windDrag).value, this.config.windDrag, 0, 1);
     this.config.windFlutter = window.Atoms.readNumber(document.getElementById(this.ids.windFlutter).value, this.config.windFlutter, 0, 2);
+    this.config.windResponse = window.Atoms.readNumber(document.getElementById(this.ids.windResponse).value, this.config.windResponse, 0, 2);
     this.config.damping = window.Atoms.readNumber(document.getElementById(this.ids.damping).value, this.config.damping, 0.9, 0.9995);
     this.config.iterations = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.iterations).value, this.config.iterations, 1, 20));
     this.config.physicsRate = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.physicsRate).value, this.config.physicsRate, 30, 240));

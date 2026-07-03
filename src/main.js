@@ -108,6 +108,9 @@ function updatePhysicsStats(steps) {
     `<div><span>Spring E</span>${formatMetric(values.springEnergy)}</div>`,
     `<div><span>Max strain</span>${formatPercent(values.maxStrain)}</div>`,
     `<div><span>Avg strain</span>${formatPercent(values.averageStrain)}</div>`,
+    `<div><span>Wind</span>${formatWind()}</div>`,
+    `<div><span>Wind avg</span>${formatMetric(solver.windStats.averageForce)}</div>`,
+    `<div><span>Wind max</span>${formatMetric(solver.windStats.maxForce)}</div>`,
     `<div><span>Steps</span>${steps}</div>`,
   ].join("");
 }
@@ -115,6 +118,14 @@ function updatePhysicsStats(steps) {
 function formatMaterial() {
   const material = window.Atoms.materialProperties[config.material];
   return material ? material.label : "Custom";
+}
+
+function formatWind() {
+  if (!config.windEnabled || config.windStrength <= 0) {
+    return "off";
+  }
+
+  return `${config.windDirection} / ${config.windResponse.toFixed(2)}x`;
 }
 
 function formatMetric(value) {

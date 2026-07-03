@@ -32,6 +32,7 @@ window.Atoms.defaultConfig = Object.freeze({
   windSpeed: 1.2,
   windDrag: 0.22,
   windFlutter: 0.45,
+  windResponse: 1,
   damping: 0.998,
   iterations: 4,
   physicsRate: 60,
@@ -60,6 +61,7 @@ window.Atoms.materialProperties = Object.freeze({
     atomMass: 1,
     mouseStiffness: 2.8,
     mouseDamping: 0.4,
+    windResponse: 0.45,
   }),
   cloth: Object.freeze({
     label: "Cloth",
@@ -72,6 +74,7 @@ window.Atoms.materialProperties = Object.freeze({
     atomMass: 0.75,
     mouseStiffness: 2.4,
     mouseDamping: 0.55,
+    windResponse: 1,
   }),
   rubber: Object.freeze({
     label: "Rubber",
@@ -84,6 +87,7 @@ window.Atoms.materialProperties = Object.freeze({
     atomMass: 1.1,
     mouseStiffness: 2.2,
     mouseDamping: 0.85,
+    windResponse: 0.8,
   }),
   gel: Object.freeze({
     label: "Gel",
@@ -96,6 +100,7 @@ window.Atoms.materialProperties = Object.freeze({
     atomMass: 0.8,
     mouseStiffness: 1.4,
     mouseDamping: 1.1,
+    windResponse: 0.7,
   }),
   heavy: Object.freeze({
     label: "Heavy lattice",
@@ -108,6 +113,7 @@ window.Atoms.materialProperties = Object.freeze({
     atomMass: 4,
     mouseStiffness: 4.2,
     mouseDamping: 1.2,
+    windResponse: 0.25,
   }),
 });
 
@@ -121,6 +127,7 @@ window.Atoms.materialKeys = Object.freeze([
   "atomMass",
   "mouseStiffness",
   "mouseDamping",
+  "windResponse",
 ]);
 
 window.Atoms.scenePresets = Object.freeze({
