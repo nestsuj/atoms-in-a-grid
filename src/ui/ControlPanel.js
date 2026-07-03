@@ -42,7 +42,9 @@ window.Atoms.ControlPanel = class ControlPanel {
   bind() {
     for (const [key, id] of Object.entries(this.ids)) {
       const input = document.getElementById(id);
-      input.addEventListener("input", () => {
+      const eventName = input.tagName === "SELECT" ? "change" : "input";
+
+      input.addEventListener(eventName, () => {
         if (key === "material") {
           this.applyMaterial(input.value);
           this.write();
