@@ -213,15 +213,20 @@ window.Atoms.VerletSolver = class VerletSolver {
     const relativeY = windVelocity.y - atomVelocityY;
     const relativeZ = windVelocity.z - atomVelocityZ;
     const normalSpeed = relativeX * normal.x + relativeY * normal.y + relativeZ * normal.z;
+    const tangentX = relativeX - normal.x * normalSpeed;
+    const tangentY = relativeY - normal.y * normalSpeed;
+    const tangentZ = relativeZ - normal.z * normalSpeed;
     const facing = Math.abs(normal.x * this.windDirection.x + normal.y * this.windDirection.y + normal.z * this.windDirection.z);
     const pressureScale = 0.2 + 0.8 * facing;
     const flutter = this.sampleFlutter(atom, lattice, time);
-    const drag = this.windDrag;
+    const normalDrag = this.windDrag;
+    const skinDrag = this.windDrag * 0.08;
+    const pressure = normalSpeed * pressureScale + flutter + normalSpeed * normalDrag;
 
     return {
-      x: normal.x * (normalSpeed * pressureScale + flutter) + relativeX * drag,
-      y: normal.y * (normalSpeed * pressureScale + flutter) + relativeY * drag,
-      z: normal.z * (normalSpeed * pressureScale + flutter) + relativeZ * drag,
+      x: normal.x * pressure + tangentX * skinDrag,
+      y: normal.y * pressure + tangentY * skinDrag,
+      z: normal.z * pressure + tangentZ * skinDrag,
     };
   }
 
