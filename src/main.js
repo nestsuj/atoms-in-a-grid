@@ -221,7 +221,7 @@ function updateKeyboardPan(elapsed) {
   const length = Math.hypot(right, up) || 1;
   const speed = 420;
   const scale = (speed * elapsed) / 1000 / length;
-  camera.pan(right * scale, up * scale);
+  camera.pan(right * scale, -up * scale);
   drag.syncAfterCameraChange();
   pinEdit.syncAfterCameraChange();
 }
