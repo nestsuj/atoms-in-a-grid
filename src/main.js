@@ -45,6 +45,7 @@ function updateSceneStats() {
   sceneStats.innerHTML = [
     `<div><span>Atoms</span>${lattice.atoms.length.toLocaleString()}</div>`,
     `<div><span>Bonds</span>${lattice.bonds.length.toLocaleString()}</div>`,
+    `<div><span>Shear</span>${lattice.shearSprings.length.toLocaleString()}</div>`,
     `<div><span>Bending</span>${lattice.bendingConstraints.length.toLocaleString()}</div>`,
   ].join("");
 }

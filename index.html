@@ -68,9 +68,14 @@
               <span>Spring forces are more physical; constraint projection keeps the older shape-preserving behavior.</span>
             </label>
             <label>
-              Stiffness
+              Structural stiffness
               <input id="stiffnessInput" type="range" min="0.02" max="1" step="0.01">
               <span>How strongly visible bonds restore their rest length.</span>
+            </label>
+            <label>
+              Shear stiffness
+              <input id="shearStiffnessInput" type="range" min="0" max="1" step="0.01">
+              <span>Hidden diagonal spring strength in spring mode. Helps cloth and cells resist collapsing into diamonds.</span>
             </label>
             <label>
               Spring damping
@@ -80,7 +85,7 @@
             <label>
               Bend stiffness
               <input id="bendStiffnessInput" type="range" min="0" max="1" step="0.01">
-              <span>Hidden angle resistance that keeps rows and corners square.</span>
+              <span>Longer-range spring strength that resists sharp bends and preserves rows.</span>
             </label>
             <label>
               Release energy

@@ -12,6 +12,7 @@ window.Atoms.Lattice = class Lattice {
     this.restLength = config.restLength;
     this.atoms = [];
     this.bonds = [];
+    this.shearSprings = [];
     this.bendingConstraints = [];
 
     const offsetX = (this.width - 1) * this.restLength * 0.5;
@@ -34,6 +35,7 @@ window.Atoms.Lattice = class Lattice {
     }
 
     this.connectNeighbors();
+    this.connectShearSprings();
     this.connectBendingConstraints();
   }
 
@@ -60,6 +62,47 @@ window.Atoms.Lattice = class Lattice {
           if (x + 1 < this.width) this.bonds.push(new window.Atoms.Bond(atom, this.atomAt(x + 1, y, z), this.restLength));
           if (y + 1 < this.height) this.bonds.push(new window.Atoms.Bond(atom, this.atomAt(x, y + 1, z), this.restLength));
           if (z + 1 < this.depth) this.bonds.push(new window.Atoms.Bond(atom, this.atomAt(x, y, z + 1), this.restLength));
+        }
+      }
+    }
+  }
+
+  connectShearSprings() {
+    const seen = new Set();
+    const add = (a, b) => {
+      const first = Math.min(a.id, b.id);
+      const second = Math.max(a.id, b.id);
+      const key = `${first}:${second}`;
+
+      if (seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      this.shearSprings.push(new window.Atoms.Bond(
+        a,
+        b,
+        window.Atoms.distance(a.restPosition, b.restPosition),
+      ));
+    };
+
+    for (let z = 0; z < this.depth; z += 1) {
+      for (let y = 0; y < this.height; y += 1) {
+        for (let x = 0; x < this.width; x += 1) {
+          if (x + 1 < this.width && y + 1 < this.height) {
+            add(this.atomAt(x, y, z), this.atomAt(x + 1, y + 1, z));
+            add(this.atomAt(x + 1, y, z), this.atomAt(x, y + 1, z));
+          }
+
+          if (x + 1 < this.width && z + 1 < this.depth) {
+            add(this.atomAt(x, y, z), this.atomAt(x + 1, y, z + 1));
+            add(this.atomAt(x + 1, y, z), this.atomAt(x, y, z + 1));
+          }
+
+          if (y + 1 < this.height && z + 1 < this.depth) {
+            add(this.atomAt(x, y, z), this.atomAt(x, y + 1, z + 1));
+            add(this.atomAt(x, y + 1, z), this.atomAt(x, y, z + 1));
+          }
         }
       }
     }

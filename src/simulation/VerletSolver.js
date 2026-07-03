@@ -10,6 +10,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.physicsMode = config.physicsMode;
     this.damping = config.damping;
     this.stiffness = config.stiffness;
+    this.shearStiffness = config.shearStiffness;
     this.springDamping = config.springDamping;
     this.bendStiffness = config.bendStiffness;
     this.releaseEnergy = config.releaseEnergy;
@@ -89,6 +90,7 @@ window.Atoms.VerletSolver = class VerletSolver {
       this.clearForces(lattice);
       this.applyGravity(lattice);
       this.applySpringForces(lattice.bonds, springStiffness, this.springDamping);
+      this.applySpringForces(lattice.shearSprings, this.shearStiffness, this.springDamping * 0.75);
       this.applySpringForces(lattice.bendingConstraints, bendSpringStiffness, this.springDamping * 0.5);
       this.applyMouseSpringForces();
       this.integrateForces(lattice, substepDamping, dtSquared);
