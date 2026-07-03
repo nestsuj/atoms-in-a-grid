@@ -28,6 +28,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.windScale = config.windScale;
     this.windSpeed = config.windSpeed;
     this.windDrag = config.windDrag;
+    this.windFlutter = config.windFlutter;
     this.windDirection = this.getWindDirection(config.windDirection);
     this.iterations = config.iterations;
     this.bendCadence = config.fastBending ? 2 : 1;
@@ -214,13 +215,31 @@ window.Atoms.VerletSolver = class VerletSolver {
     const normalSpeed = relativeX * normal.x + relativeY * normal.y + relativeZ * normal.z;
     const facing = Math.abs(normal.x * this.windDirection.x + normal.y * this.windDirection.y + normal.z * this.windDirection.z);
     const pressureScale = 0.2 + 0.8 * facing;
+    const flutter = this.sampleFlutter(atom, lattice, time);
     const drag = this.windDrag;
 
     return {
-      x: normal.x * normalSpeed * pressureScale + relativeX * drag,
-      y: normal.y * normalSpeed * pressureScale + relativeY * drag,
-      z: normal.z * normalSpeed * pressureScale + relativeZ * drag,
+      x: normal.x * (normalSpeed * pressureScale + flutter) + relativeX * drag,
+      y: normal.y * (normalSpeed * pressureScale + flutter) + relativeY * drag,
+      z: normal.z * (normalSpeed * pressureScale + flutter) + relativeZ * drag,
     };
+  }
+
+  sampleFlutter(atom, lattice, time) {
+    if (this.windFlutter <= 0 || this.windTurbulence <= 0) {
+      return 0;
+    }
+
+    const exposure = this.surfaceExposure(atom, lattice);
+    const xRatio = lattice.width > 1 ? atom.gridX / (lattice.width - 1) : 1;
+    const yRatio = lattice.height > 1 ? atom.gridY / (lattice.height - 1) : 0.5;
+    const phase = time * this.windSpeed * 5.2;
+    const traveling = Math.sin(xRatio * Math.PI * 3.4 - phase);
+    const crossWave = Math.sin(yRatio * Math.PI * 2.1 + phase * 0.73 + atom.gridX * 0.31);
+    const signedWave = traveling * 0.72 + crossWave * 0.28;
+    const freeEdgeGain = 0.25 + 0.75 * xRatio;
+
+    return signedWave * this.windStrength * this.windTurbulence * this.windFlutter * exposure * freeEdgeGain;
   }
 
   sampleWindVelocity(atom, lattice, time) {

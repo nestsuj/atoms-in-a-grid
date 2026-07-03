@@ -31,6 +31,7 @@ window.Atoms.defaultConfig = Object.freeze({
   windScale: 220,
   windSpeed: 1.2,
   windDrag: 0.22,
+  windFlutter: 0.45,
   damping: 0.998,
   iterations: 4,
   physicsRate: 60,
@@ -141,6 +142,7 @@ window.Atoms.scenePresets = Object.freeze({
     windScale: 220,
     windSpeed: 1,
     windDrag: 0.18,
+    windFlutter: 0.3,
     physicsMode: "spring",
   }),
   flag: Object.freeze({
@@ -161,6 +163,7 @@ window.Atoms.scenePresets = Object.freeze({
     windScale: 260,
     windSpeed: 1.35,
     windDrag: 0.28,
+    windFlutter: 0.9,
     physicsMode: "spring",
   }),
   gelCube: Object.freeze({
@@ -181,6 +184,7 @@ window.Atoms.scenePresets = Object.freeze({
     windScale: 220,
     windSpeed: 1,
     windDrag: 0.2,
+    windFlutter: 0.35,
     physicsMode: "spring",
   }),
   heavyLattice: Object.freeze({
@@ -201,6 +205,7 @@ window.Atoms.scenePresets = Object.freeze({
     windScale: 260,
     windSpeed: 0.8,
     windDrag: 0.12,
+    windFlutter: 0.25,
     physicsMode: "spring",
   }),
 });
@@ -222,6 +227,7 @@ window.Atoms.scenePresetKeys = Object.freeze([
   "windScale",
   "windSpeed",
   "windDrag",
+  "windFlutter",
   "physicsMode",
 ]);
 
