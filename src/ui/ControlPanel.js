@@ -42,9 +42,7 @@ window.Atoms.ControlPanel = class ControlPanel {
   bind() {
     for (const [key, id] of Object.entries(this.ids)) {
       const input = document.getElementById(id);
-      const eventName = input.tagName === "SELECT" ? "change" : "input";
-
-      input.addEventListener(eventName, () => {
+      const handleInput = () => {
         if (key === "material") {
           this.applyMaterial(input.value);
           this.write();
@@ -63,7 +61,12 @@ window.Atoms.ControlPanel = class ControlPanel {
         } else {
           this.handlers.onConfigure();
         }
-      });
+      };
+
+      input.addEventListener("input", handleInput);
+      if (input.tagName === "SELECT") {
+        input.addEventListener("change", handleInput);
+      }
     }
 
     document.getElementById("resetButton").addEventListener("click", this.handlers.onReset);

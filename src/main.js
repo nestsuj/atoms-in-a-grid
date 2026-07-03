@@ -66,12 +66,18 @@ function updateSceneStats() {
 function updatePhysicsStats(steps) {
   const values = diagnostics.update(lattice, config.physicsRate);
   physicsStats.innerHTML = [
+    `<div><span>Material</span>${formatMaterial()}</div>`,
     `<div><span>Kinetic</span>${formatMetric(values.kineticEnergy)}</div>`,
     `<div><span>Spring E</span>${formatMetric(values.springEnergy)}</div>`,
     `<div><span>Max strain</span>${formatPercent(values.maxStrain)}</div>`,
     `<div><span>Avg strain</span>${formatPercent(values.averageStrain)}</div>`,
     `<div><span>Steps</span>${steps}</div>`,
   ].join("");
+}
+
+function formatMaterial() {
+  const material = window.Atoms.materialProperties[config.material];
+  return material ? material.label : "Custom";
 }
 
 function formatMetric(value) {
