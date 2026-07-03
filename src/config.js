@@ -6,6 +6,7 @@ window.Atoms.defaultConfig = Object.freeze({
   depth: 7,
   restLength: 56,
   atomRadius: 7,
+  physicsMode: "spring",
   stiffness: 0.24,
   bendStiffness: 0.08,
   releaseEnergy: 0.85,

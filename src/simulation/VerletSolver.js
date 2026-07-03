@@ -7,6 +7,7 @@ window.Atoms.VerletSolver = class VerletSolver {
   }
 
   configure(config) {
+    this.physicsMode = config.physicsMode;
     this.damping = config.damping;
     this.stiffness = config.stiffness;
     this.bendStiffness = config.bendStiffness;
@@ -20,6 +21,7 @@ window.Atoms.VerletSolver = class VerletSolver {
 
   pin(atom, position) {
     this.pinned.set(atom.id, {
+      atom,
       current: window.Atoms.clone(position),
       previous: window.Atoms.clone(position),
       velocity: window.Atoms.vec3(),
@@ -66,6 +68,34 @@ window.Atoms.VerletSolver = class VerletSolver {
   }
 
   step(lattice) {
+    if (this.physicsMode === "spring") {
+      this.stepSpringForces(lattice);
+      return;
+    }
+
+    this.stepConstraints(lattice);
+  }
+
+  stepSpringForces(lattice) {
+    const substeps = Math.max(1, this.iterations);
+    const dt = 1 / substeps;
+    const dtSquared = dt * dt;
+    const substepDamping = Math.pow(this.damping, dt);
+    const springStiffness = this.stiffness;
+    const bendSpringStiffness = this.bendStiffness * 0.35;
+
+    for (let i = 0; i < substeps; i += 1) {
+      this.clearForces(lattice);
+      this.applyGravity(lattice);
+      this.applySpringForces(lattice.bonds, springStiffness);
+      this.applySpringForces(lattice.bendingConstraints, bendSpringStiffness);
+      this.applyMouseSpringForces();
+      this.integrateForces(lattice, substepDamping, dtSquared);
+      this.applyLocks(lattice);
+    }
+  }
+
+  stepConstraints(lattice) {
     for (const atom of lattice.atoms) {
       const pinned = this.pinned.get(atom.id);
       if (atom.fixed) {
@@ -107,6 +137,116 @@ window.Atoms.VerletSolver = class VerletSolver {
         this.solveDistanceConstraints(lattice.bendingConstraints, this.effectiveBendStiffness);
       }
       this.applyLocks(lattice);
+    }
+  }
+
+  clearForces(lattice) {
+    for (const atom of lattice.atoms) {
+      atom.force.x = 0;
+      atom.force.y = 0;
+      atom.force.z = 0;
+    }
+  }
+
+  applyGravity(lattice) {
+    if (this.gravity <= 0) {
+      return;
+    }
+
+    for (const atom of lattice.atoms) {
+      if (atom.fixed || this.isHardPinned(atom)) {
+        continue;
+      }
+
+      atom.force.y -= this.gravity;
+    }
+  }
+
+  applySpringForces(constraints, stiffness) {
+    if (stiffness <= 0) {
+      return;
+    }
+
+    for (const constraint of constraints) {
+      const a = constraint.a;
+      const b = constraint.b;
+      const deltaX = b.position.x - a.position.x;
+      const deltaY = b.position.y - a.position.y;
+      const deltaZ = b.position.z - a.position.z;
+      const currentLength = Math.max(Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ), 0.0001);
+      const extension = currentLength - constraint.restLength;
+      const force = extension * stiffness;
+      const forceX = (deltaX / currentLength) * force;
+      const forceY = (deltaY / currentLength) * force;
+      const forceZ = (deltaZ / currentLength) * force;
+      const aLocked = a.fixed || this.isHardPinned(a);
+      const bLocked = b.fixed || this.isHardPinned(b);
+
+      if (!aLocked) {
+        a.force.x += forceX;
+        a.force.y += forceY;
+        a.force.z += forceZ;
+      }
+
+      if (!bLocked) {
+        b.force.x -= forceX;
+        b.force.y -= forceY;
+        b.force.z -= forceZ;
+      }
+    }
+  }
+
+  applyMouseSpringForces() {
+    const stiffness = this.dragStrength * 1.6;
+
+    for (const pin of this.pinned.values()) {
+      if (this.isHardGrab()) {
+        continue;
+      }
+
+      const atom = pin.atom;
+      if (!atom || atom.fixed) {
+        continue;
+      }
+
+      atom.force.x += (pin.current.x - atom.position.x) * stiffness;
+      atom.force.y += (pin.current.y - atom.position.y) * stiffness;
+      atom.force.z += (pin.current.z - atom.position.z) * stiffness;
+    }
+  }
+
+  integrateForces(lattice, damping, dtSquared) {
+    for (const atom of lattice.atoms) {
+      const pinned = this.pinned.get(atom.id);
+
+      if (atom.fixed) {
+        window.Atoms.copy(atom.position, atom.fixedPosition);
+        window.Atoms.copy(atom.previousPosition, atom.fixedPosition);
+      } else if (pinned && this.isHardGrab()) {
+        window.Atoms.copy(atom.position, pinned.current);
+        atom.previousPosition.x = pinned.current.x - pinned.velocity.x;
+        atom.previousPosition.y = pinned.current.y - pinned.velocity.y;
+        atom.previousPosition.z = pinned.current.z - pinned.velocity.z;
+        pinned.velocity.x *= 0.86;
+        pinned.velocity.y *= 0.86;
+        pinned.velocity.z *= 0.86;
+      } else {
+        const x = atom.position.x;
+        const y = atom.position.y;
+        const z = atom.position.z;
+        atom.position.x += (atom.position.x - atom.previousPosition.x) * damping + atom.force.x * dtSquared;
+        atom.position.y += (atom.position.y - atom.previousPosition.y) * damping + atom.force.y * dtSquared;
+        atom.position.z += (atom.position.z - atom.previousPosition.z) * damping + atom.force.z * dtSquared;
+        atom.previousPosition.x = x;
+        atom.previousPosition.y = y;
+        atom.previousPosition.z = z;
+
+        if (pinned) {
+          pinned.velocity.x *= 0.86;
+          pinned.velocity.y *= 0.86;
+          pinned.velocity.z *= 0.86;
+        }
+      }
     }
   }
 

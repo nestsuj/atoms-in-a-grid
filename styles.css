@@ -196,7 +196,8 @@ label span {
   line-height: 1.35;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-height: 32px;
   border: 1px solid var(--panel-border);

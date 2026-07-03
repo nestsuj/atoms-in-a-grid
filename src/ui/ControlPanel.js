@@ -10,6 +10,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       depth: "depthInput",
       restLength: "restLengthInput",
       atomRadius: "atomRadiusInput",
+      physicsMode: "physicsModeInput",
       stiffness: "stiffnessInput",
       bendStiffness: "bendStiffnessInput",
       releaseEnergy: "releaseEnergyInput",
@@ -68,6 +69,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.depth = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.depth).value, this.config.depth, 1, 18));
     this.config.restLength = window.Atoms.readNumber(document.getElementById(this.ids.restLength).value, this.config.restLength, 24, 120);
     this.config.atomRadius = window.Atoms.readNumber(document.getElementById(this.ids.atomRadius).value, this.config.atomRadius, 3, 18);
+    this.config.physicsMode = document.getElementById(this.ids.physicsMode).value;
     this.config.stiffness = window.Atoms.readNumber(document.getElementById(this.ids.stiffness).value, this.config.stiffness, 0.02, 1);
     this.config.bendStiffness = window.Atoms.readNumber(document.getElementById(this.ids.bendStiffness).value, this.config.bendStiffness, 0, 1);
     this.config.releaseEnergy = window.Atoms.readNumber(document.getElementById(this.ids.releaseEnergy).value, this.config.releaseEnergy, 0, 1.5);

@@ -7,6 +7,7 @@ window.Atoms.Atom = class Atom {
     this.previousPosition = window.Atoms.clone(position);
     this.restPosition = window.Atoms.clone(position);
     this.fixedPosition = window.Atoms.clone(position);
+    this.force = window.Atoms.vec3();
     this.fixed = fixed;
     this.cornerPin = cornerPin;
     this.selected = false;
