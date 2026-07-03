@@ -10,6 +10,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       depth: "depthInput",
       restLength: "restLengthInput",
       atomRadius: "atomRadiusInput",
+      scenePreset: "scenePresetInput",
       material: "materialInput",
       physicsMode: "physicsModeInput",
       stiffness: "stiffnessInput",
@@ -43,14 +44,27 @@ window.Atoms.ControlPanel = class ControlPanel {
     for (const [key, id] of Object.entries(this.ids)) {
       const input = document.getElementById(id);
       const handleInput = () => {
+        if (key === "scenePreset") {
+          this.applyScenePreset(input.value);
+          this.write();
+          this.handlers.onRebuild();
+          return;
+        }
+
         if (key === "material") {
           this.applyMaterial(input.value);
+          this.config.scenePreset = "custom";
           this.write();
           this.handlers.onMaterialChange();
           return;
         }
 
         this.read();
+        if (window.Atoms.scenePresetKeys.includes(key)) {
+          this.config.scenePreset = "custom";
+          document.getElementById(this.ids.scenePreset).value = "custom";
+        }
+
         if (window.Atoms.materialKeys.includes(key)) {
           this.config.material = "custom";
           document.getElementById(this.ids.material).value = "custom";
@@ -90,6 +104,22 @@ window.Atoms.ControlPanel = class ControlPanel {
     }
   }
 
+  applyScenePreset(presetId) {
+    const preset = window.Atoms.scenePresets[presetId];
+    this.config.scenePreset = preset ? presetId : "custom";
+
+    if (!preset) {
+      return;
+    }
+
+    for (const key of window.Atoms.scenePresetKeys) {
+      this.config[key] = preset[key];
+    }
+
+    this.applyMaterial(this.config.material);
+    this.config.scenePreset = presetId;
+  }
+
   write() {
     for (const [key, id] of Object.entries(this.ids)) {
       const input = document.getElementById(id);
@@ -107,6 +137,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.depth = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.depth).value, this.config.depth, 1, 18));
     this.config.restLength = window.Atoms.readNumber(document.getElementById(this.ids.restLength).value, this.config.restLength, 24, 120);
     this.config.atomRadius = window.Atoms.readNumber(document.getElementById(this.ids.atomRadius).value, this.config.atomRadius, 3, 18);
+    this.config.scenePreset = document.getElementById(this.ids.scenePreset).value;
     this.config.material = document.getElementById(this.ids.material).value;
     this.config.physicsMode = document.getElementById(this.ids.physicsMode).value;
     this.config.stiffness = window.Atoms.readNumber(document.getElementById(this.ids.stiffness).value, this.config.stiffness, 0.02, 1);

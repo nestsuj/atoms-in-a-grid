@@ -23,17 +23,17 @@ window.Atoms.Lattice = class Lattice {
       for (let y = 0; y < this.height; y += 1) {
         for (let x = 0; x < this.width; x += 1) {
           const id = this.index(x, y, z);
-          const cornerPin = this.isCorner(x, y, z);
           const position = window.Atoms.vec3(
             x * this.restLength - offsetX,
             y * this.restLength - offsetY,
             z * this.restLength - offsetZ,
           );
-          this.atoms.push(new window.Atoms.Atom(id, position, cornerPin, cornerPin));
+          this.atoms.push(new window.Atoms.Atom(id, position));
         }
       }
     }
 
+    this.applyPinLayout(config.pinLayout || "corners");
     this.connectNeighbors();
     this.connectShearSprings();
     this.connectBendingConstraints();
@@ -52,6 +52,40 @@ window.Atoms.Lattice = class Lattice {
     const onY = y === 0 || y === this.height - 1;
     const onZ = z === 0 || z === this.depth - 1;
     return onX && onY && onZ;
+  }
+
+  applyPinLayout(layout) {
+    for (const atom of this.atoms) {
+      atom.fixed = false;
+      atom.cornerPin = false;
+      window.Atoms.copy(atom.fixedPosition, atom.restPosition);
+    }
+
+    for (let z = 0; z < this.depth; z += 1) {
+      for (let y = 0; y < this.height; y += 1) {
+        for (let x = 0; x < this.width; x += 1) {
+          if (!this.isPinnedByLayout(layout, x, y, z)) {
+            continue;
+          }
+
+          const atom = this.atomAt(x, y, z);
+          atom.fixed = true;
+          atom.cornerPin = true;
+        }
+      }
+    }
+  }
+
+  isPinnedByLayout(layout, x, y, z) {
+    if (layout === "none") {
+      return false;
+    }
+
+    if (layout === "leftEdge") {
+      return x === 0;
+    }
+
+    return this.isCorner(x, y, z);
   }
 
   connectNeighbors() {
