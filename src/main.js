@@ -54,6 +54,16 @@ function clearUserPins() {
   needsEnergyUpdate = true;
 }
 
+function applyMaterialChange() {
+  solver.pinned.clear();
+  drag.end();
+  pinEdit.cancel();
+  lattice.clearMotion();
+  configureRuntime();
+  needsEnergyUpdate = true;
+  accumulator = 0;
+}
+
 function updateSceneStats() {
   sceneStats.innerHTML = [
     `<div><span>Atoms</span>${lattice.atoms.length.toLocaleString()}</div>`,
@@ -92,6 +102,7 @@ function formatPercent(value) {
 
 new window.Atoms.ControlPanel(config, {
   onConfigure: configureRuntime,
+  onMaterialChange: applyMaterialChange,
   onRebuild: rebuild,
   onReset: reset,
   onClearUserPins: clearUserPins,

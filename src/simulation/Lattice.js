@@ -158,6 +158,15 @@ window.Atoms.Lattice = class Lattice {
     }
   }
 
+  clearMotion() {
+    for (const atom of this.atoms) {
+      window.Atoms.copy(atom.previousPosition, atom.position);
+      atom.force.x = 0;
+      atom.force.y = 0;
+      atom.force.z = 0;
+    }
+  }
+
   clearUserPins() {
     for (const atom of this.atoms) {
       if (atom.cornerPin || !atom.fixed) {

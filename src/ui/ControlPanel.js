@@ -46,7 +46,7 @@ window.Atoms.ControlPanel = class ControlPanel {
         if (key === "material") {
           this.applyMaterial(input.value);
           this.write();
-          this.handlers.onConfigure();
+          this.handlers.onMaterialChange();
           return;
         }
 
