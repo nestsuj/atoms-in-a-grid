@@ -288,11 +288,42 @@ window.Atoms.VerletSolver = class VerletSolver {
   }
 
   applyWindQuad(lattice, time, a, b, c, d) {
-    this.applyWindTriangle(lattice, time, a, b, c);
-    this.applyWindTriangle(lattice, time, a, c, d);
+    const first = this.windTriangleShape(a, b, c);
+    const second = this.windTriangleShape(a, c, d);
+    const doubleArea = first.doubleArea + second.doubleArea;
+
+    if (doubleArea < 0.000001) {
+      return;
+    }
+
+    let normal = {
+      x: first.areaNormal.x + second.areaNormal.x,
+      y: first.areaNormal.y + second.areaNormal.y,
+      z: first.areaNormal.z + second.areaNormal.z,
+    };
+    const normalLength = window.Atoms.length(normal);
+
+    if (normalLength < 0.000001) {
+      normal = first.doubleArea >= second.doubleArea
+        ? first.areaNormal
+        : second.areaNormal;
+    }
+
+    const unitNormal = window.Atoms.normalize(normal);
+    const centroid = {
+      x: (first.centroid.x * first.doubleArea + second.centroid.x * second.doubleArea) / doubleArea,
+      y: (first.centroid.y * first.doubleArea + second.centroid.y * second.doubleArea) / doubleArea,
+      z: (first.centroid.z * first.doubleArea + second.centroid.z * second.doubleArea) / doubleArea,
+    };
+    const force = this.windPanelForce(lattice, time, [a, b, c, d], unitNormal, centroid, doubleArea);
+
+    this.addWindForceToAtom(a, force, 0.25);
+    this.addWindForceToAtom(b, force, 0.25);
+    this.addWindForceToAtom(c, force, 0.25);
+    this.addWindForceToAtom(d, force, 0.25);
   }
 
-  applyWindTriangle(lattice, time, a, b, c) {
+  windTriangleShape(a, b, c) {
     const ab = {
       x: b.position.x - a.position.x,
       y: b.position.y - a.position.y,
@@ -304,29 +335,37 @@ window.Atoms.VerletSolver = class VerletSolver {
       z: c.position.z - a.position.z,
     };
     const areaNormal = window.Atoms.cross(ab, ac);
-    const doubleArea = window.Atoms.length(areaNormal);
 
-    if (doubleArea < 0.000001) {
-      return;
-    }
+    return {
+      areaNormal,
+      doubleArea: window.Atoms.length(areaNormal),
+      centroid: {
+        x: (a.position.x + b.position.x + c.position.x) / 3,
+        y: (a.position.y + b.position.y + c.position.y) / 3,
+        z: (a.position.z + b.position.z + c.position.z) / 3,
+      },
+    };
+  }
 
-    const normal = {
-      x: areaNormal.x / doubleArea,
-      y: areaNormal.y / doubleArea,
-      z: areaNormal.z / doubleArea,
-    };
-    const centroid = {
-      x: (a.position.x + b.position.x + c.position.x) / 3,
-      y: (a.position.y + b.position.y + c.position.y) / 3,
-      z: (a.position.z + b.position.z + c.position.z) / 3,
-    };
+  windPanelForce(lattice, time, atoms, normal, centroid, doubleArea) {
     const exposure = this.surfaceExposureAt(lattice, centroid);
     const windVelocity = this.sampleWindVelocityAt(centroid, exposure, time);
     const surfaceVelocity = {
-      x: ((a.position.x - a.previousPosition.x) + (b.position.x - b.previousPosition.x) + (c.position.x - c.previousPosition.x)) / 3,
-      y: ((a.position.y - a.previousPosition.y) + (b.position.y - b.previousPosition.y) + (c.position.y - c.previousPosition.y)) / 3,
-      z: ((a.position.z - a.previousPosition.z) + (b.position.z - b.previousPosition.z) + (c.position.z - c.previousPosition.z)) / 3,
+      x: 0,
+      y: 0,
+      z: 0,
     };
+
+    for (const atom of atoms) {
+      surfaceVelocity.x += atom.position.x - atom.previousPosition.x;
+      surfaceVelocity.y += atom.position.y - atom.previousPosition.y;
+      surfaceVelocity.z += atom.position.z - atom.previousPosition.z;
+    }
+
+    surfaceVelocity.x /= atoms.length;
+    surfaceVelocity.y /= atoms.length;
+    surfaceVelocity.z /= atoms.length;
+
     const relative = {
       x: windVelocity.x - surfaceVelocity.x,
       y: windVelocity.y - surfaceVelocity.y,
@@ -341,11 +380,29 @@ window.Atoms.VerletSolver = class VerletSolver {
     const areaScale = doubleArea / (2 * lattice.restLength * lattice.restLength);
     const pressure = normalSpeed * Math.abs(normalSpeed) * (0.65 + this.windDrag * 0.7) * this.windResponse * areaScale;
     const skin = this.windDrag * this.windResponse * 0.01 * areaScale;
-    const force = {
+
+    return {
       x: normal.x * pressure + tangent.x * skin,
       y: normal.y * pressure + tangent.y * skin,
       z: normal.z * pressure + tangent.z * skin,
     };
+  }
+
+  applyWindTriangle(lattice, time, a, b, c) {
+    const shape = this.windTriangleShape(a, b, c);
+
+    if (shape.doubleArea < 0.000001) {
+      return;
+    }
+
+    const force = this.windPanelForce(
+      lattice,
+      time,
+      [a, b, c],
+      window.Atoms.normalize(shape.areaNormal),
+      shape.centroid,
+      shape.doubleArea,
+    );
 
     this.addWindForceToAtom(a, force, 1 / 3);
     this.addWindForceToAtom(b, force, 1 / 3);
