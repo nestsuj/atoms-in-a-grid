@@ -141,15 +141,21 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
 
   prepareSurfaceEntries(lattice, projectedAtoms) {
     const panels = lattice.surfacePanels || [];
-    this.surfaceEntries.length = panels.length;
+    const surfaceSide = this.config.surfaceSide || "both";
+    let entryIndex = 0;
 
     for (let i = 0; i < panels.length; i += 1) {
       const panel = panels[i];
-      let entry = this.surfaceEntries[i];
+
+      if (surfaceSide !== "both" && panel.side !== surfaceSide) {
+        continue;
+      }
+
+      let entry = this.surfaceEntries[entryIndex];
 
       if (!entry) {
         entry = { panel: null, a: null, b: null, c: null, d: null, depth: 0 };
-        this.surfaceEntries[i] = entry;
+        this.surfaceEntries[entryIndex] = entry;
       }
 
       entry.panel = panel;
@@ -158,8 +164,10 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       entry.c = projectedAtoms[panel.c.id].screen;
       entry.d = projectedAtoms[panel.d.id].screen;
       entry.depth = (entry.a.depth + entry.b.depth + entry.c.depth + entry.d.depth) * 0.25;
+      entryIndex += 1;
     }
 
+    this.surfaceEntries.length = entryIndex;
     return this.surfaceEntries;
   }
 
@@ -205,9 +213,10 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     const light = 0.65 + depthShade * 0.35;
     const fillAlpha = opacity * (0.34 + depthShade * 0.16);
     const strokeAlpha = opacity * 0.45;
-    const r = Math.round(42 + light * 52);
-    const g = Math.round(145 + light * 70);
-    const b = Math.round(166 + light * 60);
+    const tint = this.surfaceTint(entry.panel.side);
+    const r = Math.round(tint.r + light * tint.lightR);
+    const g = Math.round(tint.g + light * tint.lightG);
+    const b = Math.round(tint.b + light * tint.lightB);
 
     ctx.beginPath();
     ctx.moveTo(entry.a.x, entry.a.y);
@@ -220,6 +229,18 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     ctx.lineWidth = 0.7;
     ctx.strokeStyle = `rgba(170, 238, 247, ${strokeAlpha.toFixed(3)})`;
     ctx.stroke();
+  }
+
+  surfaceTint(side) {
+    if (side === "back") {
+      return { r: 80, g: 104, b: 164, lightR: 58, lightG: 58, lightB: 70 };
+    }
+
+    if (side === "front") {
+      return { r: 42, g: 145, b: 166, lightR: 52, lightG: 70, lightB: 60 };
+    }
+
+    return { r: 68, g: 124, b: 146, lightR: 48, lightG: 62, lightB: 64 };
   }
 
   drawAtom(ctx, entry, depthShade, simple) {

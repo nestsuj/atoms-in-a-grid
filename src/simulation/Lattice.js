@@ -197,28 +197,32 @@ window.Atoms.Lattice = class Lattice {
     this.surfacePanels = [];
 
     if (this.depth === 1) {
-      this.connectSurfacePlane("sheet", "xy", 0);
+      this.connectSurfacePlane("front", "xy", 0, false);
+      this.connectSurfacePlane("back", "xy", 0, true);
       return;
     }
 
-    this.connectSurfacePlane("front", "xy", this.depth - 1);
-    this.connectSurfacePlane("back", "xy", 0);
-    this.connectSurfacePlane("top", "xz", this.height - 1);
-    this.connectSurfacePlane("bottom", "xz", 0);
-    this.connectSurfacePlane("right", "yz", this.width - 1);
-    this.connectSurfacePlane("left", "yz", 0);
+    this.connectSurfacePlane("front", "xy", this.depth - 1, false);
+    this.connectSurfacePlane("back", "xy", 0, true);
+    this.connectSurfacePlane("top", "xz", this.height - 1, false);
+    this.connectSurfacePlane("bottom", "xz", 0, true);
+    this.connectSurfacePlane("right", "yz", this.width - 1, false);
+    this.connectSurfacePlane("left", "yz", 0, true);
   }
 
-  connectSurfacePlane(side, plane, fixedIndex) {
+  connectSurfacePlane(side, plane, fixedIndex, reverse) {
     if (plane === "xy") {
       for (let y = 0; y + 1 < this.height; y += 1) {
         for (let x = 0; x + 1 < this.width; x += 1) {
-          this.addSurfacePanel(
+          this.addSurfacePanelFromAtoms(
             side,
-            this.atomAt(x, y, fixedIndex),
-            this.atomAt(x + 1, y, fixedIndex),
-            this.atomAt(x + 1, y + 1, fixedIndex),
-            this.atomAt(x, y + 1, fixedIndex),
+            [
+              this.atomAt(x, y, fixedIndex),
+              this.atomAt(x + 1, y, fixedIndex),
+              this.atomAt(x + 1, y + 1, fixedIndex),
+              this.atomAt(x, y + 1, fixedIndex),
+            ],
+            reverse,
             x / Math.max(1, this.width - 1),
             y / Math.max(1, this.height - 1),
             (x + 1) / Math.max(1, this.width - 1),
@@ -232,12 +236,15 @@ window.Atoms.Lattice = class Lattice {
     if (plane === "xz") {
       for (let z = 0; z + 1 < this.depth; z += 1) {
         for (let x = 0; x + 1 < this.width; x += 1) {
-          this.addSurfacePanel(
+          this.addSurfacePanelFromAtoms(
             side,
-            this.atomAt(x, fixedIndex, z),
-            this.atomAt(x + 1, fixedIndex, z),
-            this.atomAt(x + 1, fixedIndex, z + 1),
-            this.atomAt(x, fixedIndex, z + 1),
+            [
+              this.atomAt(x, fixedIndex, z),
+              this.atomAt(x + 1, fixedIndex, z),
+              this.atomAt(x + 1, fixedIndex, z + 1),
+              this.atomAt(x, fixedIndex, z + 1),
+            ],
+            reverse,
             x / Math.max(1, this.width - 1),
             z / Math.max(1, this.depth - 1),
             (x + 1) / Math.max(1, this.width - 1),
@@ -250,12 +257,15 @@ window.Atoms.Lattice = class Lattice {
 
     for (let z = 0; z + 1 < this.depth; z += 1) {
       for (let y = 0; y + 1 < this.height; y += 1) {
-        this.addSurfacePanel(
+        this.addSurfacePanelFromAtoms(
           side,
-          this.atomAt(fixedIndex, y, z),
-          this.atomAt(fixedIndex, y + 1, z),
-          this.atomAt(fixedIndex, y + 1, z + 1),
-          this.atomAt(fixedIndex, y, z + 1),
+          [
+            this.atomAt(fixedIndex, y, z),
+            this.atomAt(fixedIndex, y + 1, z),
+            this.atomAt(fixedIndex, y + 1, z + 1),
+            this.atomAt(fixedIndex, y, z + 1),
+          ],
+          reverse,
           y / Math.max(1, this.height - 1),
           z / Math.max(1, this.depth - 1),
           (y + 1) / Math.max(1, this.height - 1),
@@ -263,6 +273,15 @@ window.Atoms.Lattice = class Lattice {
         );
       }
     }
+  }
+
+  addSurfacePanelFromAtoms(side, atoms, reverse, u0, v0, u1, v1) {
+    if (reverse) {
+      this.addSurfacePanel(side, atoms[0], atoms[3], atoms[2], atoms[1], u0, v0, u1, v1);
+      return;
+    }
+
+    this.addSurfacePanel(side, atoms[0], atoms[1], atoms[2], atoms[3], u0, v0, u1, v1);
   }
 
   addSurfacePanel(side, a, b, c, d, u0, v0, u1, v1) {
