@@ -46,6 +46,8 @@ window.Atoms.ControlPanel = class ControlPanel {
       physicsRate: "physicsRateInput",
       fastBending: "fastBendingInput",
       fastLargeGridAtoms: "fastLargeGridAtomsInput",
+      showAtoms: "showAtomsInput",
+      showBonds: "showBondsInput",
       sortBonds: "sortBondsInput",
       sortAtoms: "sortAtomsInput",
       simpleBondColors: "simpleBondColorsInput",
@@ -254,6 +256,8 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.physicsRate = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.physicsRate).value, this.config.physicsRate, 30, 240));
     this.config.fastBending = document.getElementById(this.ids.fastBending).checked;
     this.config.fastLargeGridAtoms = document.getElementById(this.ids.fastLargeGridAtoms).checked;
+    this.config.showAtoms = document.getElementById(this.ids.showAtoms).checked;
+    this.config.showBonds = document.getElementById(this.ids.showBonds).checked;
     this.config.sortBonds = document.getElementById(this.ids.sortBonds).checked;
     this.config.sortAtoms = document.getElementById(this.ids.sortAtoms).checked;
     this.config.simpleBondColors = document.getElementById(this.ids.simpleBondColors).checked;

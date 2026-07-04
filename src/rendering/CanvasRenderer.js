@@ -70,9 +70,11 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     }
 
     ctx.lineCap = "round";
-    for (const entry of bondEntries) {
-      const depthShade = (entry.depth - minDepth) / depthRange;
-      this.drawBond(ctx, entry, depthShade);
+    if (this.config.showBonds) {
+      for (const entry of bondEntries) {
+        const depthShade = (entry.depth - minDepth) / depthRange;
+        this.drawBond(ctx, entry, depthShade);
+      }
     }
 
     this.drawCollisionDebug(ctx, lattice, projectedAtoms, camera, solver);
@@ -80,11 +82,13 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     if (this.config.sortAtoms) {
       projectedAtoms.sort((a, b) => a.screen.depth - b.screen.depth);
     }
-    const simpleAtoms = this.config.fastLargeGridAtoms && lattice.atoms.length > 1200;
-    for (const entry of projectedAtoms) {
-      const rawDepthShade = (entry.screen.depth - minDepth) / depthRange;
-      const depthShade = 0.5 + (rawDepthShade - 0.5) * this.config.atomDepthShading;
-      this.drawAtom(ctx, entry, depthShade, simpleAtoms);
+    if (this.config.showAtoms) {
+      const simpleAtoms = this.config.fastLargeGridAtoms && lattice.atoms.length > 1200;
+      for (const entry of projectedAtoms) {
+        const rawDepthShade = (entry.screen.depth - minDepth) / depthRange;
+        const depthShade = 0.5 + (rawDepthShade - 0.5) * this.config.atomDepthShading;
+        this.drawAtom(ctx, entry, depthShade, simpleAtoms);
+      }
     }
 
     this.drawWindIndicator(ctx, camera, basis, width, height);
@@ -142,12 +146,19 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
   prepareSurfaceEntries(lattice, projectedAtoms) {
     const panels = lattice.surfacePanels || [];
     const surfaceSide = this.config.surfaceSide || "both";
+    const frontImageOnly = this.config.surfaceStyle === "image"
+      && this.config.surfaceTextureImage
+      && surfaceSide === "both";
     let entryIndex = 0;
 
     for (let i = 0; i < panels.length; i += 1) {
       const panel = panels[i];
 
       if (surfaceSide !== "both" && panel.side !== surfaceSide) {
+        continue;
+      }
+
+      if (frontImageOnly && panel.side === "back") {
         continue;
       }
 
@@ -243,7 +254,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     const sy1 = panel.v1 * image.naturalHeight;
 
     ctx.save();
-    ctx.globalAlpha *= opacity * (0.72 + light * 0.28);
+    ctx.globalAlpha *= opacity;
     this.drawImageTriangle(
       ctx,
       image,

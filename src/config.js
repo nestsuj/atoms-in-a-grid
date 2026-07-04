@@ -45,6 +45,8 @@ window.Atoms.defaultConfig = Object.freeze({
   fastLargeGridAtoms: true,
   sortBonds: true,
   sortAtoms: true,
+  showAtoms: true,
+  showBonds: true,
   simpleBondColors: false,
   showDiagnostics: true,
   showSurfaces: false,
