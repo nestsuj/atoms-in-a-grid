@@ -21,6 +21,10 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.dragStrength = config.dragStrength;
     this.mouseStiffness = config.mouseStiffness;
     this.mouseDamping = config.mouseDamping;
+    this.collisionEnabled = config.collisionEnabled;
+    this.collisionRadiusScale = config.collisionRadiusScale;
+    this.collisionStiffness = config.collisionStiffness;
+    this.collisionPasses = config.collisionPasses;
     this.gravity = config.gravityEnabled ? config.gravityStrength : 0;
     this.windEnabled = config.windEnabled;
     this.windStrength = config.windStrength;
@@ -122,6 +126,7 @@ window.Atoms.VerletSolver = class VerletSolver {
       this.applySpringForces(lattice.bendingConstraints, bendSpringStiffness, this.bendDamping);
       this.applyMouseSpringForces();
       this.integrateForces(lattice, substepDamping, dtSquared);
+      this.solveCollisions(lattice);
       this.applyLocks(lattice);
     }
   }
@@ -173,6 +178,7 @@ window.Atoms.VerletSolver = class VerletSolver {
       if (i % this.bendCadence === 0) {
         this.solveDistanceConstraints(lattice.bendingConstraints, this.effectiveBendStiffness);
       }
+      this.solveCollisions(lattice);
       this.applyLocks(lattice);
     }
   }
@@ -629,6 +635,157 @@ window.Atoms.VerletSolver = class VerletSolver {
         b.position.z -= correctionZ;
       }
     }
+  }
+
+  solveCollisions(lattice) {
+    if (!this.collisionEnabled || this.collisionStiffness <= 0 || this.collisionRadiusScale <= 0) {
+      return;
+    }
+
+    const passes = Math.max(1, Math.round(this.collisionPasses));
+    for (let i = 0; i < passes; i += 1) {
+      this.solveCollisionPass(lattice);
+    }
+  }
+
+  solveCollisionPass(lattice) {
+    const collisionRadius = Math.max(0.001, lattice.atomRadius || 0) * this.collisionRadiusScale;
+    const minDistance = collisionRadius * 2;
+    const minDistanceSquared = minDistance * minDistance;
+    const cellSize = Math.max(0.001, minDistance);
+    const buckets = this.buildCollisionBuckets(lattice, cellSize);
+    const excludedPairs = this.collisionExcludedPairs(lattice);
+
+    for (const atom of lattice.atoms) {
+      const cellX = Math.floor(atom.position.x / cellSize);
+      const cellY = Math.floor(atom.position.y / cellSize);
+      const cellZ = Math.floor(atom.position.z / cellSize);
+
+      for (let z = cellZ - 1; z <= cellZ + 1; z += 1) {
+        for (let y = cellY - 1; y <= cellY + 1; y += 1) {
+          for (let x = cellX - 1; x <= cellX + 1; x += 1) {
+            const bucket = buckets.get(this.collisionCellKey(x, y, z));
+            if (!bucket) {
+              continue;
+            }
+
+            for (const other of bucket) {
+              if (other.id <= atom.id || excludedPairs.has(this.collisionPairKey(atom, other))) {
+                continue;
+              }
+
+              this.solveAtomCollision(atom, other, minDistance, minDistanceSquared);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  buildCollisionBuckets(lattice, cellSize) {
+    const buckets = new Map();
+
+    for (const atom of lattice.atoms) {
+      const x = Math.floor(atom.position.x / cellSize);
+      const y = Math.floor(atom.position.y / cellSize);
+      const z = Math.floor(atom.position.z / cellSize);
+      const key = this.collisionCellKey(x, y, z);
+      let bucket = buckets.get(key);
+
+      if (!bucket) {
+        bucket = [];
+        buckets.set(key, bucket);
+      }
+
+      bucket.push(atom);
+    }
+
+    return buckets;
+  }
+
+  solveAtomCollision(a, b, minDistance, minDistanceSquared) {
+    const aLocked = a.fixed || this.isHardPinned(a);
+    const bLocked = b.fixed || this.isHardPinned(b);
+
+    if (aLocked && bLocked) {
+      return;
+    }
+
+    let deltaX = b.position.x - a.position.x;
+    let deltaY = b.position.y - a.position.y;
+    let deltaZ = b.position.z - a.position.z;
+    let distanceSquared = deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ;
+
+    if (distanceSquared >= minDistanceSquared) {
+      return;
+    }
+
+    if (distanceSquared < 0.000001) {
+      deltaX = ((b.id * 928371 + a.id * 364479) % 1000) / 1000 - 0.5;
+      deltaY = ((b.id * 193496 + a.id * 834927) % 1000) / 1000 - 0.5;
+      deltaZ = ((b.id * 738561 + a.id * 129837) % 1000) / 1000 - 0.5;
+      distanceSquared = deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ;
+    }
+
+    const distance = Math.max(Math.sqrt(distanceSquared), 0.000001);
+    const overlap = (minDistance - distance) * this.collisionStiffness;
+    const normalX = deltaX / distance;
+    const normalY = deltaY / distance;
+    const normalZ = deltaZ / distance;
+
+    if (!aLocked && !bLocked) {
+      const correction = overlap * 0.5;
+      a.position.x -= normalX * correction;
+      a.position.y -= normalY * correction;
+      a.position.z -= normalZ * correction;
+      b.position.x += normalX * correction;
+      b.position.y += normalY * correction;
+      b.position.z += normalZ * correction;
+    } else if (!aLocked) {
+      a.position.x -= normalX * overlap;
+      a.position.y -= normalY * overlap;
+      a.position.z -= normalZ * overlap;
+    } else if (!bLocked) {
+      b.position.x += normalX * overlap;
+      b.position.y += normalY * overlap;
+      b.position.z += normalZ * overlap;
+    }
+  }
+
+  collisionExcludedPairs(lattice) {
+    if (
+      lattice.collisionExcludedPairs
+      && lattice.collisionExcludedBondCount === lattice.bonds.length
+      && lattice.collisionExcludedShearCount === lattice.shearSprings.length
+    ) {
+      return lattice.collisionExcludedPairs;
+    }
+
+    const excluded = new Set();
+    const add = (constraint) => {
+      excluded.add(this.collisionPairKey(constraint.a, constraint.b));
+    };
+
+    for (const bond of lattice.bonds) {
+      add(bond);
+    }
+
+    for (const shear of lattice.shearSprings) {
+      add(shear);
+    }
+
+    lattice.collisionExcludedPairs = excluded;
+    lattice.collisionExcludedBondCount = lattice.bonds.length;
+    lattice.collisionExcludedShearCount = lattice.shearSprings.length;
+    return excluded;
+  }
+
+  collisionPairKey(a, b) {
+    return a.id < b.id ? `${a.id}:${b.id}` : `${b.id}:${a.id}`;
+  }
+
+  collisionCellKey(x, y, z) {
+    return `${x}:${y}:${z}`;
   }
 
   applyLocks(lattice) {

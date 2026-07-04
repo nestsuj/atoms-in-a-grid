@@ -24,6 +24,10 @@ window.Atoms.ControlPanel = class ControlPanel {
       dragStrength: "dragStrengthInput",
       mouseStiffness: "mouseStiffnessInput",
       mouseDamping: "mouseDampingInput",
+      collisionEnabled: "collisionEnabledInput",
+      collisionRadiusScale: "collisionRadiusScaleInput",
+      collisionStiffness: "collisionStiffnessInput",
+      collisionPasses: "collisionPassesInput",
       allowCornerPinEditing: "allowCornerPinEditingInput",
       gravityEnabled: "gravityEnabledInput",
       gravityStrength: "gravityStrengthInput",
@@ -196,6 +200,10 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.dragStrength = window.Atoms.readNumber(document.getElementById(this.ids.dragStrength).value, this.config.dragStrength, 0.02, 1);
     this.config.mouseStiffness = window.Atoms.readNumber(document.getElementById(this.ids.mouseStiffness).value, this.config.mouseStiffness, 0, 8);
     this.config.mouseDamping = window.Atoms.readNumber(document.getElementById(this.ids.mouseDamping).value, this.config.mouseDamping, 0, 4);
+    this.config.collisionEnabled = document.getElementById(this.ids.collisionEnabled).checked;
+    this.config.collisionRadiusScale = window.Atoms.readNumber(document.getElementById(this.ids.collisionRadiusScale).value, this.config.collisionRadiusScale, 0.5, 4);
+    this.config.collisionStiffness = window.Atoms.readNumber(document.getElementById(this.ids.collisionStiffness).value, this.config.collisionStiffness, 0, 1);
+    this.config.collisionPasses = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.collisionPasses).value, this.config.collisionPasses, 1, 6));
     this.config.allowCornerPinEditing = document.getElementById(this.ids.allowCornerPinEditing).checked;
     this.config.gravityEnabled = document.getElementById(this.ids.gravityEnabled).checked;
     this.config.gravityStrength = window.Atoms.readNumber(document.getElementById(this.ids.gravityStrength).value, this.config.gravityStrength, 0, 1.5);

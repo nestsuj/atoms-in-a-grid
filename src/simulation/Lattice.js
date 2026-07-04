@@ -10,6 +10,7 @@ window.Atoms.Lattice = class Lattice {
     this.height = config.height;
     this.depth = config.depth;
     this.restLength = config.restLength;
+    this.atomRadius = config.atomRadius;
     this.atoms = [];
     this.bonds = [];
     this.shearSprings = [];

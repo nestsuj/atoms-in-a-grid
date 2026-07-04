@@ -108,6 +108,7 @@ function updatePhysicsStats(steps) {
     `<div><span>Spring E</span>${formatMetric(values.springEnergy)}</div>`,
     `<div><span>Max strain</span>${formatPercent(values.maxStrain)}</div>`,
     `<div><span>Avg strain</span>${formatPercent(values.averageStrain)}</div>`,
+    `<div><span>Collisions</span>${formatCollisions()}</div>`,
     `<div><span>Wind profile</span>${formatWindProfile()}</div>`,
     `<div><span>Wind</span>${formatWind()}</div>`,
     `<div><span>Wind avg</span>${formatMetric(solver.windStats.averageForce)}</div>`,
@@ -127,6 +128,14 @@ function formatWind() {
   }
 
   return `${config.windDirection} / response ${config.windResponse.toFixed(2)}x`;
+}
+
+function formatCollisions() {
+  if (!config.collisionEnabled || config.collisionStiffness <= 0) {
+    return "off";
+  }
+
+  return `${config.collisionRadiusScale.toFixed(2)}r / ${config.collisionPasses} pass`;
 }
 
 function formatWindProfile() {

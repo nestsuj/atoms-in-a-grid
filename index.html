@@ -152,6 +152,28 @@
               <span>Spring-mode damping applied to the dragged atom. Higher values reduce release wobble.</span>
             </label>
             <label class="checkbox-control">
+              <input id="collisionEnabledInput" type="checkbox">
+              <span class="checkbox-text">
+                Collisions
+                <small>Prevents non-neighbor atoms from overlapping using a spatial hash self-collision pass.</small>
+              </span>
+            </label>
+            <label>
+              Collision radius
+              <input id="collisionRadiusScaleInput" type="range" min="0.5" max="4" step="0.05">
+              <span>Collision sphere radius relative to the visible atom radius. Larger values keep atoms farther apart.</span>
+            </label>
+            <label>
+              Collision stiffness
+              <input id="collisionStiffnessInput" type="range" min="0" max="1" step="0.01">
+              <span>How strongly overlaps are corrected each pass. Higher values separate faster but can feel stiffer.</span>
+            </label>
+            <label>
+              Collision passes
+              <input id="collisionPassesInput" type="number" min="1" max="6" step="1">
+              <span>Repeated collision solve passes per physics substep. More catches overlaps better and costs more.</span>
+            </label>
+            <label class="checkbox-control">
               <input id="allowCornerPinEditingInput" type="checkbox">
               <span class="checkbox-text">
                 Edit corner pins
@@ -332,25 +354,25 @@
     </aside>
   </main>
 
-  <script src="./src/config.js?v=20260704d"></script>
-  <script src="./src/math/vec3.js?v=20260704d"></script>
-  <script src="./src/math/camera.js?v=20260704d"></script>
-  <script src="./src/math/projection.js?v=20260704d"></script>
-  <script src="./src/simulation/Atom.js?v=20260704d"></script>
-  <script src="./src/simulation/Bond.js?v=20260704d"></script>
-  <script src="./src/simulation/BendingConstraint.js?v=20260704d"></script>
-  <script src="./src/simulation/Lattice.js?v=20260704d"></script>
-  <script src="./src/simulation/WindField.js?v=20260704d"></script>
-  <script src="./src/simulation/VerletSolver.js?v=20260704d"></script>
-  <script src="./src/simulation/EnergyModel.js?v=20260704d"></script>
-  <script src="./src/simulation/Diagnostics.js?v=20260704d"></script>
-  <script src="./src/rendering/DrawStyle.js?v=20260704d"></script>
-  <script src="./src/rendering/CanvasRenderer.js?v=20260704d"></script>
-  <script src="./src/input/PointerController.js?v=20260704d"></script>
-  <script src="./src/input/OrbitController.js?v=20260704d"></script>
-  <script src="./src/input/DragController.js?v=20260704d"></script>
-  <script src="./src/input/PinEditController.js?v=20260704d"></script>
-  <script src="./src/ui/ControlPanel.js?v=20260704d"></script>
-  <script src="./src/main.js?v=20260704d"></script>
+  <script src="./src/config.js?v=20260704e"></script>
+  <script src="./src/math/vec3.js?v=20260704e"></script>
+  <script src="./src/math/camera.js?v=20260704e"></script>
+  <script src="./src/math/projection.js?v=20260704e"></script>
+  <script src="./src/simulation/Atom.js?v=20260704e"></script>
+  <script src="./src/simulation/Bond.js?v=20260704e"></script>
+  <script src="./src/simulation/BendingConstraint.js?v=20260704e"></script>
+  <script src="./src/simulation/Lattice.js?v=20260704e"></script>
+  <script src="./src/simulation/WindField.js?v=20260704e"></script>
+  <script src="./src/simulation/VerletSolver.js?v=20260704e"></script>
+  <script src="./src/simulation/EnergyModel.js?v=20260704e"></script>
+  <script src="./src/simulation/Diagnostics.js?v=20260704e"></script>
+  <script src="./src/rendering/DrawStyle.js?v=20260704e"></script>
+  <script src="./src/rendering/CanvasRenderer.js?v=20260704e"></script>
+  <script src="./src/input/PointerController.js?v=20260704e"></script>
+  <script src="./src/input/OrbitController.js?v=20260704e"></script>
+  <script src="./src/input/DragController.js?v=20260704e"></script>
+  <script src="./src/input/PinEditController.js?v=20260704e"></script>
+  <script src="./src/ui/ControlPanel.js?v=20260704e"></script>
+  <script src="./src/main.js?v=20260704e"></script>
 </body>
 </html>
