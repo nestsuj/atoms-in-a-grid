@@ -48,6 +48,7 @@ window.Atoms.defaultConfig = Object.freeze({
   simpleBondColors: false,
   showDiagnostics: true,
   showWindField: false,
+  showCollisionDebug: false,
   atomDepthShading: 1,
   energyUpdateRate: 1,
   energyScale: 0.12,

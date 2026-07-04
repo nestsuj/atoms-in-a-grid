@@ -35,7 +35,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     }
   }
 
-  render(lattice, camera) {
+  render(lattice, camera, solver) {
     this.ensureSize(camera);
     const width = this.canvas.width / this.pixelRatio;
     const height = this.canvas.height / this.pixelRatio;
@@ -66,6 +66,8 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       const depthShade = (entry.depth - minDepth) / depthRange;
       this.drawBond(ctx, entry, depthShade);
     }
+
+    this.drawCollisionDebug(ctx, lattice, projectedAtoms, camera, solver);
 
     if (this.config.sortAtoms) {
       projectedAtoms.sort((a, b) => a.screen.depth - b.screen.depth);
@@ -183,6 +185,66 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       ctx.strokeStyle = atom.selected ? "#ffe182" : "rgba(255, 255, 255, 0.7)";
       ctx.stroke();
     }
+  }
+
+  drawCollisionDebug(ctx, lattice, projectedAtoms, camera, solver) {
+    if (!this.config.showCollisionDebug || !this.config.collisionEnabled) {
+      return;
+    }
+
+    const stats = solver ? solver.collisionStats : null;
+    const activeAtoms = stats ? stats.activeAtoms : null;
+    const collisionRadius = (lattice.atomRadius || this.config.atomRadius) * this.config.collisionRadiusScale * camera.zoom;
+    const maxHalos = lattice.atoms.length > 1400 ? 1400 : lattice.atoms.length;
+    const stride = Math.max(1, Math.ceil(lattice.atoms.length / maxHalos));
+
+    ctx.save();
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i < lattice.atoms.length; i += stride) {
+      const atom = lattice.atoms[i];
+      const entry = projectedAtoms[atom.id];
+      const isActive = activeAtoms && activeAtoms.has(atom.id);
+
+      if (!entry) {
+        continue;
+      }
+
+      ctx.beginPath();
+      ctx.arc(entry.screen.x, entry.screen.y, collisionRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = isActive
+        ? "rgba(255, 145, 91, 0.66)"
+        : "rgba(119, 231, 255, 0.11)";
+      ctx.stroke();
+
+      if (isActive) {
+        ctx.beginPath();
+        ctx.arc(entry.screen.x, entry.screen.y, collisionRadius * 0.42, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 145, 91, 0.18)";
+        ctx.fill();
+      }
+    }
+
+    if (activeAtoms) {
+      for (const atomId of activeAtoms) {
+        const entry = projectedAtoms[atomId];
+
+        if (!entry) {
+          continue;
+        }
+
+        ctx.beginPath();
+        ctx.arc(entry.screen.x, entry.screen.y, collisionRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(255, 145, 91, 0.78)";
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(entry.screen.x, entry.screen.y, collisionRadius * 0.42, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 145, 91, 0.2)";
+        ctx.fill();
+      }
+    }
+
+    ctx.restore();
   }
 
   drawWindIndicator(ctx, camera, basis, width, height) {

@@ -40,6 +40,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.bendCadence = config.fastBending ? 2 : 1;
     this.effectiveBendStiffness = Math.min(1, this.bendStiffness * this.bendCadence);
     this.windStats = this.windStats || this.emptyWindStats();
+    this.collisionStats = this.collisionStats || this.emptyCollisionStats();
   }
 
   emptyWindStats() {
@@ -49,6 +50,15 @@ window.Atoms.VerletSolver = class VerletSolver {
       samples: 0,
       averageForce: 0,
       direction: "off",
+    };
+  }
+
+  emptyCollisionStats() {
+    return {
+      testedPairs: 0,
+      corrections: 0,
+      maxCorrection: 0,
+      activeAtoms: new Set(),
     };
   }
 
@@ -116,6 +126,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     const substepDamping = Math.pow(this.damping, dt);
     const springStiffness = this.stiffness;
     const bendSpringStiffness = this.bendStiffness * 0.35;
+    this.collisionStats = this.emptyCollisionStats();
 
     for (let i = 0; i < substeps; i += 1) {
       this.clearForces(lattice);
@@ -132,6 +143,8 @@ window.Atoms.VerletSolver = class VerletSolver {
   }
 
   stepConstraints(lattice, time) {
+    this.collisionStats = this.emptyCollisionStats();
+
     for (const atom of lattice.atoms) {
       const pinned = this.pinned.get(atom.id);
       if (atom.fixed) {
@@ -674,6 +687,7 @@ window.Atoms.VerletSolver = class VerletSolver {
                 continue;
               }
 
+              this.collisionStats.testedPairs += 1;
               this.solveAtomCollision(atom, other, minDistance, minDistanceSquared);
             }
           }
@@ -729,9 +743,18 @@ window.Atoms.VerletSolver = class VerletSolver {
 
     const distance = Math.max(Math.sqrt(distanceSquared), 0.000001);
     const overlap = (minDistance - distance) * this.collisionStiffness;
+
+    if (overlap <= 0) {
+      return;
+    }
+
     const normalX = deltaX / distance;
     const normalY = deltaY / distance;
     const normalZ = deltaZ / distance;
+    this.collisionStats.corrections += 1;
+    this.collisionStats.maxCorrection = Math.max(this.collisionStats.maxCorrection, overlap);
+    this.collisionStats.activeAtoms.add(a.id);
+    this.collisionStats.activeAtoms.add(b.id);
 
     if (!aLocked && !bLocked) {
       const correction = overlap * 0.5;

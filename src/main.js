@@ -109,6 +109,9 @@ function updatePhysicsStats(steps) {
     `<div><span>Max strain</span>${formatPercent(values.maxStrain)}</div>`,
     `<div><span>Avg strain</span>${formatPercent(values.averageStrain)}</div>`,
     `<div><span>Collisions</span>${formatCollisions()}</div>`,
+    `<div><span>Collide tests</span>${formatCount(solver.collisionStats.testedPairs)}</div>`,
+    `<div><span>Collide hits</span>${formatCount(solver.collisionStats.corrections)}</div>`,
+    `<div><span>Max push</span>${formatMetric(solver.collisionStats.maxCorrection)}</div>`,
     `<div><span>Wind profile</span>${formatWindProfile()}</div>`,
     `<div><span>Wind</span>${formatWind()}</div>`,
     `<div><span>Wind avg</span>${formatMetric(solver.windStats.averageForce)}</div>`,
@@ -147,6 +150,12 @@ function formatMetric(value) {
   if (value >= 1000000) return `${(value / 1000000).toFixed(1)}m`;
   if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
   return value.toFixed(1);
+}
+
+function formatCount(value) {
+  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}m`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+  return String(value);
 }
 
 function formatPercent(value) {
@@ -330,7 +339,7 @@ function animate(time) {
     needsEnergyUpdate = false;
   }
   updatePhysicsStats(steps);
-  renderer.render(lattice, camera);
+  renderer.render(lattice, camera, solver);
 }
 
 requestAnimationFrame(animate);
