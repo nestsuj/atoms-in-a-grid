@@ -10,6 +10,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     this.cssHeight = 0;
     this.projectedAtoms = [];
     this.bondEntries = [];
+    this.surfaceEntries = [];
   }
 
   resize(camera) {
@@ -56,6 +57,13 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     }
 
     const depthRange = Math.max(1, maxDepth - minDepth);
+    const surfaceEntries = this.prepareSurfaceEntries(lattice, projectedAtoms);
+    if (this.config.sortBonds) {
+      surfaceEntries.sort((a, b) => a.depth - b.depth);
+    }
+
+    this.drawSurfaces(ctx, surfaceEntries, minDepth, depthRange);
+
     const bondEntries = this.prepareBondEntries(lattice, projectedAtoms);
     if (this.config.sortBonds) {
       bondEntries.sort((a, b) => a.depth - b.depth);
@@ -131,6 +139,30 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     return this.bondEntries;
   }
 
+  prepareSurfaceEntries(lattice, projectedAtoms) {
+    const panels = lattice.surfacePanels || [];
+    this.surfaceEntries.length = panels.length;
+
+    for (let i = 0; i < panels.length; i += 1) {
+      const panel = panels[i];
+      let entry = this.surfaceEntries[i];
+
+      if (!entry) {
+        entry = { panel: null, a: null, b: null, c: null, d: null, depth: 0 };
+        this.surfaceEntries[i] = entry;
+      }
+
+      entry.panel = panel;
+      entry.a = projectedAtoms[panel.a.id].screen;
+      entry.b = projectedAtoms[panel.b.id].screen;
+      entry.c = projectedAtoms[panel.c.id].screen;
+      entry.d = projectedAtoms[panel.d.id].screen;
+      entry.depth = (entry.a.depth + entry.b.depth + entry.c.depth + entry.d.depth) * 0.25;
+    }
+
+    return this.surfaceEntries;
+  }
+
   drawBackground(ctx, width, height) {
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
     gradient.addColorStop(0, "#171d26");
@@ -149,6 +181,44 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     ctx.strokeStyle = this.config.simpleBondColors
       ? window.Atoms.neutralBondColor(depthShade)
       : window.Atoms.bondColor(depthShade, entry.strain);
+    ctx.stroke();
+  }
+
+  drawSurfaces(ctx, surfaceEntries, minDepth, depthRange) {
+    if (!this.config.showSurfaces || this.config.surfaceOpacity <= 0) {
+      return;
+    }
+
+    ctx.save();
+    ctx.lineJoin = "round";
+
+    for (const entry of surfaceEntries) {
+      const depthShade = (entry.depth - minDepth) / depthRange;
+      this.drawSurfacePanel(ctx, entry, depthShade);
+    }
+
+    ctx.restore();
+  }
+
+  drawSurfacePanel(ctx, entry, depthShade) {
+    const opacity = window.Atoms.clamp(this.config.surfaceOpacity, 0, 1);
+    const light = 0.65 + depthShade * 0.35;
+    const fillAlpha = opacity * (0.34 + depthShade * 0.16);
+    const strokeAlpha = opacity * 0.45;
+    const r = Math.round(42 + light * 52);
+    const g = Math.round(145 + light * 70);
+    const b = Math.round(166 + light * 60);
+
+    ctx.beginPath();
+    ctx.moveTo(entry.a.x, entry.a.y);
+    ctx.lineTo(entry.b.x, entry.b.y);
+    ctx.lineTo(entry.c.x, entry.c.y);
+    ctx.lineTo(entry.d.x, entry.d.y);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${fillAlpha.toFixed(3)})`;
+    ctx.fill();
+    ctx.lineWidth = 0.7;
+    ctx.strokeStyle = `rgba(170, 238, 247, ${strokeAlpha.toFixed(3)})`;
     ctx.stroke();
   }
 

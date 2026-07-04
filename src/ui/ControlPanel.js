@@ -50,6 +50,8 @@ window.Atoms.ControlPanel = class ControlPanel {
       sortAtoms: "sortAtomsInput",
       simpleBondColors: "simpleBondColorsInput",
       showDiagnostics: "showDiagnosticsInput",
+      showSurfaces: "showSurfacesInput",
+      surfaceOpacity: "surfaceOpacityInput",
       showWindField: "showWindFieldInput",
       showCollisionDebug: "showCollisionDebugInput",
       atomDepthShading: "atomDepthShadingInput",
@@ -227,6 +229,8 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.sortAtoms = document.getElementById(this.ids.sortAtoms).checked;
     this.config.simpleBondColors = document.getElementById(this.ids.simpleBondColors).checked;
     this.config.showDiagnostics = document.getElementById(this.ids.showDiagnostics).checked;
+    this.config.showSurfaces = document.getElementById(this.ids.showSurfaces).checked;
+    this.config.surfaceOpacity = window.Atoms.readNumber(document.getElementById(this.ids.surfaceOpacity).value, this.config.surfaceOpacity, 0, 1);
     this.config.showWindField = document.getElementById(this.ids.showWindField).checked;
     this.config.showCollisionDebug = document.getElementById(this.ids.showCollisionDebug).checked;
     this.config.atomDepthShading = window.Atoms.readNumber(document.getElementById(this.ids.atomDepthShading).value, this.config.atomDepthShading, 0, 1);

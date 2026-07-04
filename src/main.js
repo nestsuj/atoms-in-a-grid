@@ -91,6 +91,7 @@ function updateSceneStats() {
     `<div><span>Bonds</span>${lattice.bonds.length.toLocaleString()}</div>`,
     `<div><span>Shear</span>${lattice.shearSprings.length.toLocaleString()}</div>`,
     `<div><span>Bending</span>${lattice.bendingConstraints.length.toLocaleString()}</div>`,
+    `<div><span>Panels</span>${lattice.surfacePanels.length.toLocaleString()}</div>`,
   ].join("");
 }
 
