@@ -113,6 +113,7 @@ function updatePhysicsStats(steps) {
     `<div><span>Collide tests</span>${formatCount(solver.collisionStats.testedPairs)}</div>`,
     `<div><span>Collide hits</span>${formatCount(solver.collisionStats.corrections)}</div>`,
     `<div><span>Max push</span>${formatMetric(solver.collisionStats.maxCorrection)}</div>`,
+    `<div><span>Texture</span>${formatSurfaceTexture()}</div>`,
     `<div><span>Wind profile</span>${formatWindProfile()}</div>`,
     `<div><span>Wind</span>${formatWind()}</div>`,
     `<div><span>Wind avg</span>${formatMetric(solver.windStats.averageForce)}</div>`,
@@ -145,6 +146,14 @@ function formatCollisions() {
 function formatWindProfile() {
   const profile = window.Atoms.windProfiles[config.windProfile];
   return profile ? profile.label : "Custom";
+}
+
+function formatSurfaceTexture() {
+  if (config.surfaceStyle !== "image") {
+    return config.surfaceStyle;
+  }
+
+  return config.surfaceTextureImage ? "front image" : "image missing";
 }
 
 function formatMetric(value) {

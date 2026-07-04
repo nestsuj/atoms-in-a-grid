@@ -122,6 +122,9 @@ window.Atoms.ControlPanel = class ControlPanel {
     }
 
     document.getElementById("resetButton").addEventListener("click", this.handlers.onReset);
+    document.getElementById("surfaceTextureInput").addEventListener("change", (event) => {
+      this.loadSurfaceTexture(event.currentTarget.files && event.currentTarget.files[0]);
+    });
     document.getElementById("clearUserPinsButton").addEventListener("click", this.handlers.onClearUserPins);
     document.getElementById("frontViewButton").addEventListener("click", this.handlers.onFrontView);
     document.getElementById("defaultViewButton").addEventListener("click", this.handlers.onDefaultView);
@@ -129,6 +132,30 @@ window.Atoms.ControlPanel = class ControlPanel {
       const paused = this.handlers.onTogglePause();
       event.currentTarget.textContent = paused ? "Resume" : "Pause";
     });
+  }
+
+  loadSurfaceTexture(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      this.config.surfaceTextureImage = null;
+      this.config.surfaceTextureName = "";
+      this.handlers.onConfigure();
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      const image = new Image();
+      image.addEventListener("load", () => {
+        this.config.surfaceTextureImage = image;
+        this.config.surfaceTextureName = file.name;
+        this.config.showSurfaces = true;
+        this.config.surfaceStyle = "image";
+        this.write();
+        this.handlers.onConfigure();
+      });
+      image.src = reader.result;
+    });
+    reader.readAsDataURL(file);
   }
 
   applyMaterial(materialId) {

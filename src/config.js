@@ -50,6 +50,8 @@ window.Atoms.defaultConfig = Object.freeze({
   showSurfaces: false,
   surfaceSide: "both",
   surfaceStyle: "tint",
+  surfaceTextureImage: null,
+  surfaceTextureName: "",
   surfaceOpacity: 0.22,
   showWindField: false,
   showCollisionDebug: false,

@@ -211,6 +211,13 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
   drawSurfacePanel(ctx, entry, depthShade) {
     const opacity = window.Atoms.clamp(this.config.surfaceOpacity, 0, 1);
     const light = 0.65 + depthShade * 0.35;
+    const image = this.config.surfaceTextureImage;
+
+    if (this.config.surfaceStyle === "image" && entry.panel.side === "front" && image) {
+      this.drawTexturedSurfacePanel(ctx, entry, image, opacity, light);
+      return;
+    }
+
     const fillAlpha = opacity * (0.34 + depthShade * 0.16);
     const strokeAlpha = opacity * 0.45;
     const color = this.surfaceColor(entry.panel, light);
@@ -228,8 +235,92 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     ctx.stroke();
   }
 
+  drawTexturedSurfacePanel(ctx, entry, image, opacity, light) {
+    const panel = entry.panel;
+    const sx0 = panel.u0 * image.naturalWidth;
+    const sy0 = panel.v0 * image.naturalHeight;
+    const sx1 = panel.u1 * image.naturalWidth;
+    const sy1 = panel.v1 * image.naturalHeight;
+
+    ctx.save();
+    ctx.globalAlpha *= opacity * (0.72 + light * 0.28);
+    this.drawImageTriangle(
+      ctx,
+      image,
+      { x: sx0, y: sy0 },
+      { x: sx1, y: sy0 },
+      { x: sx1, y: sy1 },
+      entry.a,
+      entry.b,
+      entry.c,
+    );
+    this.drawImageTriangle(
+      ctx,
+      image,
+      { x: sx0, y: sy0 },
+      { x: sx1, y: sy1 },
+      { x: sx0, y: sy1 },
+      entry.a,
+      entry.c,
+      entry.d,
+    );
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(entry.a.x, entry.a.y);
+    ctx.lineTo(entry.b.x, entry.b.y);
+    ctx.lineTo(entry.c.x, entry.c.y);
+    ctx.lineTo(entry.d.x, entry.d.y);
+    ctx.closePath();
+    ctx.lineWidth = 0.55;
+    ctx.strokeStyle = `rgba(230, 246, 250, ${(opacity * 0.22).toFixed(3)})`;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  drawImageTriangle(ctx, image, s0, s1, s2, d0, d1, d2) {
+    const denominator = s0.x * (s1.y - s2.y)
+      + s1.x * (s2.y - s0.y)
+      + s2.x * (s0.y - s1.y);
+
+    if (Math.abs(denominator) < 0.000001) {
+      return;
+    }
+
+    const a = (d0.x * (s1.y - s2.y) + d1.x * (s2.y - s0.y) + d2.x * (s0.y - s1.y)) / denominator;
+    const b = (d0.y * (s1.y - s2.y) + d1.y * (s2.y - s0.y) + d2.y * (s0.y - s1.y)) / denominator;
+    const c = (d0.x * (s2.x - s1.x) + d1.x * (s0.x - s2.x) + d2.x * (s1.x - s0.x)) / denominator;
+    const d = (d0.y * (s2.x - s1.x) + d1.y * (s0.x - s2.x) + d2.y * (s1.x - s0.x)) / denominator;
+    const e = (d0.x * (s1.x * s2.y - s2.x * s1.y)
+      + d1.x * (s2.x * s0.y - s0.x * s2.y)
+      + d2.x * (s0.x * s1.y - s1.x * s0.y)) / denominator;
+    const f = (d0.y * (s1.x * s2.y - s2.x * s1.y)
+      + d1.y * (s2.x * s0.y - s0.x * s2.y)
+      + d2.y * (s0.x * s1.y - s1.x * s0.y)) / denominator;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(d0.x, d0.y);
+    ctx.lineTo(d1.x, d1.y);
+    ctx.lineTo(d2.x, d2.y);
+    ctx.closePath();
+    ctx.clip();
+    ctx.transform(a, b, c, d, e, f);
+    ctx.drawImage(image, 0, 0);
+    ctx.restore();
+  }
+
   surfaceColor(panel, light) {
     const style = this.config.surfaceStyle || "tint";
+
+    if (style === "image") {
+      if (panel.side === "front") {
+        return this.uvCheckerColor(panel, light);
+      }
+
+      return this.surfaceTintColor(panel.side, light);
+    }
 
     if (style === "checker") {
       return this.uvCheckerColor(panel, light);
