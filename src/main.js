@@ -108,6 +108,7 @@ function updatePhysicsStats(steps) {
     `<div><span>Spring E</span>${formatMetric(values.springEnergy)}</div>`,
     `<div><span>Max strain</span>${formatPercent(values.maxStrain)}</div>`,
     `<div><span>Avg strain</span>${formatPercent(values.averageStrain)}</div>`,
+    `<div><span>Wind profile</span>${formatWindProfile()}</div>`,
     `<div><span>Wind</span>${formatWind()}</div>`,
     `<div><span>Wind avg</span>${formatMetric(solver.windStats.averageForce)}</div>`,
     `<div><span>Wind max</span>${formatMetric(solver.windStats.maxForce)}</div>`,
@@ -125,7 +126,12 @@ function formatWind() {
     return "off";
   }
 
-  return `${config.windDirection} / ${config.windResponse.toFixed(2)}x`;
+  return `${config.windDirection} / response ${config.windResponse.toFixed(2)}x`;
+}
+
+function formatWindProfile() {
+  const profile = window.Atoms.windProfiles[config.windProfile];
+  return profile ? profile.label : "Custom";
 }
 
 function formatMetric(value) {

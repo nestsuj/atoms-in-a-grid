@@ -27,6 +27,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       allowCornerPinEditing: "allowCornerPinEditingInput",
       gravityEnabled: "gravityEnabledInput",
       gravityStrength: "gravityStrengthInput",
+      windProfile: "windProfileInput",
       windEnabled: "windEnabledInput",
       windDirection: "windDirectionInput",
       windStrength: "windStrengthInput",
@@ -51,6 +52,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     };
     this.bind();
     this.applyMaterial(this.config.material);
+    this.applyWindProfile(this.config.windProfile);
     this.write();
   }
 
@@ -73,6 +75,14 @@ window.Atoms.ControlPanel = class ControlPanel {
           return;
         }
 
+        if (key === "windProfile") {
+          this.applyWindProfile(input.value);
+          this.config.scenePreset = "custom";
+          this.write();
+          this.handlers.onConfigure();
+          return;
+        }
+
         this.read();
         if (window.Atoms.scenePresetKeys.includes(key)) {
           this.config.scenePreset = "custom";
@@ -82,6 +92,11 @@ window.Atoms.ControlPanel = class ControlPanel {
         if (window.Atoms.materialKeys.includes(key)) {
           this.config.material = "custom";
           document.getElementById(this.ids.material).value = "custom";
+        }
+
+        if (window.Atoms.windProfileKeys.includes(key)) {
+          this.config.windProfile = "custom";
+          document.getElementById(this.ids.windProfile).value = "custom";
         }
 
         if (["width", "height", "depth", "restLength"].includes(key)) {
@@ -120,6 +135,19 @@ window.Atoms.ControlPanel = class ControlPanel {
     }
   }
 
+  applyWindProfile(profileId) {
+    const profile = window.Atoms.windProfiles[profileId];
+    this.config.windProfile = profile ? profileId : "custom";
+
+    if (!profile) {
+      return;
+    }
+
+    for (const key of window.Atoms.windProfileKeys) {
+      this.config[key] = profile[key];
+    }
+  }
+
   applyScenePreset(presetId) {
     const preset = window.Atoms.scenePresets[presetId];
     this.config.scenePreset = preset ? presetId : "custom";
@@ -133,6 +161,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     }
 
     this.applyMaterial(this.config.material);
+    this.applyWindProfile(this.config.windProfile);
     this.config.scenePreset = presetId;
   }
 
@@ -170,6 +199,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.allowCornerPinEditing = document.getElementById(this.ids.allowCornerPinEditing).checked;
     this.config.gravityEnabled = document.getElementById(this.ids.gravityEnabled).checked;
     this.config.gravityStrength = window.Atoms.readNumber(document.getElementById(this.ids.gravityStrength).value, this.config.gravityStrength, 0, 1.5);
+    this.config.windProfile = document.getElementById(this.ids.windProfile).value;
     this.config.windEnabled = document.getElementById(this.ids.windEnabled).checked;
     this.config.windDirection = document.getElementById(this.ids.windDirection).value;
     this.config.windStrength = window.Atoms.readNumber(document.getElementById(this.ids.windStrength).value, this.config.windStrength, 0, 3);
