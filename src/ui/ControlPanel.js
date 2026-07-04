@@ -45,6 +45,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       sortAtoms: "sortAtomsInput",
       simpleBondColors: "simpleBondColorsInput",
       showDiagnostics: "showDiagnosticsInput",
+      showWindField: "showWindFieldInput",
       atomDepthShading: "atomDepthShadingInput",
       energyUpdateRate: "energyUpdateRateInput",
     };
@@ -187,6 +188,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.sortAtoms = document.getElementById(this.ids.sortAtoms).checked;
     this.config.simpleBondColors = document.getElementById(this.ids.simpleBondColors).checked;
     this.config.showDiagnostics = document.getElementById(this.ids.showDiagnostics).checked;
+    this.config.showWindField = document.getElementById(this.ids.showWindField).checked;
     this.config.atomDepthShading = window.Atoms.readNumber(document.getElementById(this.ids.atomDepthShading).value, this.config.atomDepthShading, 0, 1);
     this.config.energyUpdateRate = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.energyUpdateRate).value, this.config.energyUpdateRate, 1, 10));
   }

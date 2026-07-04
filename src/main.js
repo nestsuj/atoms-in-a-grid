@@ -281,6 +281,7 @@ function updateKeyboardPan(elapsed) {
 function animate(time) {
   requestAnimationFrame(animate);
   configureRuntime();
+  config.windVisualizationTime = simulationTime;
   const elapsed = Math.min(maxFrameTime, time - lastTime);
   lastTime = time;
   let steps = 0;

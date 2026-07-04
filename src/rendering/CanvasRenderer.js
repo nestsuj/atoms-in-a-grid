@@ -44,6 +44,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     this.drawBackground(ctx, width, height);
 
     const basis = camera.getBasis();
+    this.drawWindField(ctx, lattice, camera, basis);
     const projectedAtoms = this.prepareAtomEntries(lattice, camera, basis);
     let minDepth = Infinity;
     let maxDepth = -Infinity;
@@ -223,6 +224,81 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     ctx.fill();
     ctx.font = "11px system-ui, sans-serif";
     ctx.fillText("wind", startX, startY - 8);
+    ctx.restore();
+  }
+
+  drawWindField(ctx, lattice, camera, basis) {
+    if (!this.config.showWindField || !this.config.windEnabled || this.config.windStrength <= 0) {
+      return;
+    }
+
+    const direction = this.windDirectionVector(this.config.windDirection);
+    const columns = Math.min(9, Math.max(3, lattice.width));
+    const rows = Math.min(6, Math.max(3, lattice.height));
+    const minX = -((lattice.width - 1) * lattice.restLength) * 0.5;
+    const minY = -((lattice.height - 1) * lattice.restLength) * 0.5;
+    const z = lattice.depth === 1 ? 0 : ((lattice.depth - 1) * lattice.restLength) * 0.5;
+    const time = this.config.windVisualizationTime || 0;
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let column = 0; column < columns; column += 1) {
+        const xRatio = columns === 1 ? 0.5 : column / (columns - 1);
+        const yRatio = rows === 1 ? 0.5 : row / (rows - 1);
+        const position = {
+          x: minX + xRatio * (lattice.width - 1) * lattice.restLength,
+          y: minY + yRatio * (lattice.height - 1) * lattice.restLength,
+          z,
+        };
+        const exposure = lattice.depth === 1 ? 0.35 + 0.65 * xRatio : 1;
+        const field = window.Atoms.WindField.sample(this.config, position, time);
+        const flutter = window.Atoms.WindField.flutter(this.config, position, time);
+        const strength = this.config.windStrength * exposure * window.Atoms.clamp(1 + this.config.windTurbulence * field + flutter, 0, 2.5);
+
+        if (strength <= 0.001) {
+          continue;
+        }
+
+        const start = window.Atoms.projectWithBasis(position, camera, basis);
+        const end = window.Atoms.projectWithBasis({
+          x: position.x + direction.x * this.config.restLength,
+          y: position.y + direction.y * this.config.restLength,
+          z: position.z + direction.z * this.config.restLength,
+        }, camera, basis);
+        const screenX = end.x - start.x;
+        const screenY = end.y - start.y;
+        const screenLength = Math.hypot(screenX, screenY);
+
+        if (screenLength < 0.000001) {
+          continue;
+        }
+
+        const amount = window.Atoms.clamp(strength / Math.max(0.2, this.config.windStrength * 1.8), 0, 1);
+        const arrowLength = 12 + amount * 22;
+        const endX = start.x + (screenX / screenLength) * arrowLength;
+        const endY = start.y + (screenY / screenLength) * arrowLength;
+        const angle = Math.atan2(endY - start.y, endX - start.x);
+        const alpha = 0.12 + amount * 0.32;
+
+        ctx.strokeStyle = `rgba(143, 231, 255, ${alpha.toFixed(3)})`;
+        ctx.fillStyle = `rgba(143, 231, 255, ${alpha.toFixed(3)})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(endX - Math.cos(angle - 0.55) * 5, endY - Math.sin(angle - 0.55) * 5);
+        ctx.lineTo(endX - Math.cos(angle + 0.55) * 5, endY - Math.sin(angle + 0.55) * 5);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
     ctx.restore();
   }
 
