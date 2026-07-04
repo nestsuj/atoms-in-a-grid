@@ -213,10 +213,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     const light = 0.65 + depthShade * 0.35;
     const fillAlpha = opacity * (0.34 + depthShade * 0.16);
     const strokeAlpha = opacity * 0.45;
-    const tint = this.surfaceTint(entry.panel.side);
-    const r = Math.round(tint.r + light * tint.lightR);
-    const g = Math.round(tint.g + light * tint.lightG);
-    const b = Math.round(tint.b + light * tint.lightB);
+    const color = this.surfaceColor(entry.panel, light);
 
     ctx.beginPath();
     ctx.moveTo(entry.a.x, entry.a.y);
@@ -224,11 +221,81 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     ctx.lineTo(entry.c.x, entry.c.y);
     ctx.lineTo(entry.d.x, entry.d.y);
     ctx.closePath();
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${fillAlpha.toFixed(3)})`;
+    ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${fillAlpha.toFixed(3)})`;
     ctx.fill();
     ctx.lineWidth = 0.7;
-    ctx.strokeStyle = `rgba(170, 238, 247, ${strokeAlpha.toFixed(3)})`;
+    ctx.strokeStyle = `rgba(${color.strokeR}, ${color.strokeG}, ${color.strokeB}, ${strokeAlpha.toFixed(3)})`;
     ctx.stroke();
+  }
+
+  surfaceColor(panel, light) {
+    const style = this.config.surfaceStyle || "tint";
+
+    if (style === "checker") {
+      return this.uvCheckerColor(panel, light);
+    }
+
+    if (style === "stripes") {
+      return this.uvStripeColor(panel, light);
+    }
+
+    return this.surfaceTintColor(panel.side, light);
+  }
+
+  uvCheckerColor(panel, light) {
+    const u = (panel.u0 + panel.u1) * 0.5;
+    const v = (panel.v0 + panel.v1) * 0.5;
+    const checker = (Math.floor(u * 8) + Math.floor(v * 6)) % 2;
+    const backScale = panel.side === "back" ? 0.78 : 1;
+    const axisBoost = (u < 0.08 || v < 0.08) ? 34 : 0;
+    const base = checker === 0
+      ? { r: 70, g: 206, b: 222 }
+      : { r: 245, g: 116, b: 91 };
+
+    return {
+      r: this.colorChannel((base.r + axisBoost) * light * backScale),
+      g: this.colorChannel((base.g + axisBoost * 0.6) * light * backScale),
+      b: this.colorChannel((base.b + axisBoost * 0.2) * light * backScale),
+      strokeR: 230,
+      strokeG: 246,
+      strokeB: 250,
+    };
+  }
+
+  uvStripeColor(panel, light) {
+    const u = (panel.u0 + panel.u1) * 0.5;
+    const stripe = Math.floor(u * 12) % 3;
+    const backScale = panel.side === "back" ? 0.78 : 1;
+    const base = stripe === 0
+      ? { r: 238, g: 74, b: 70 }
+      : stripe === 1
+        ? { r: 238, g: 238, b: 226 }
+        : { r: 66, g: 126, b: 222 };
+
+    return {
+      r: this.colorChannel(base.r * light * backScale),
+      g: this.colorChannel(base.g * light * backScale),
+      b: this.colorChannel(base.b * light * backScale),
+      strokeR: 230,
+      strokeG: 246,
+      strokeB: 250,
+    };
+  }
+
+  surfaceTintColor(side, light) {
+    const tint = this.surfaceTint(side);
+    return {
+      r: this.colorChannel(tint.r + light * tint.lightR),
+      g: this.colorChannel(tint.g + light * tint.lightG),
+      b: this.colorChannel(tint.b + light * tint.lightB),
+      strokeR: 170,
+      strokeG: 238,
+      strokeB: 247,
+    };
+  }
+
+  colorChannel(value) {
+    return Math.round(window.Atoms.clamp(value, 0, 255));
   }
 
   surfaceTint(side) {

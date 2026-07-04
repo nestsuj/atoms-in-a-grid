@@ -52,6 +52,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       showDiagnostics: "showDiagnosticsInput",
       showSurfaces: "showSurfacesInput",
       surfaceSide: "surfaceSideInput",
+      surfaceStyle: "surfaceStyleInput",
       surfaceOpacity: "surfaceOpacityInput",
       showWindField: "showWindFieldInput",
       showCollisionDebug: "showCollisionDebugInput",
@@ -232,6 +233,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.showDiagnostics = document.getElementById(this.ids.showDiagnostics).checked;
     this.config.showSurfaces = document.getElementById(this.ids.showSurfaces).checked;
     this.config.surfaceSide = document.getElementById(this.ids.surfaceSide).value;
+    this.config.surfaceStyle = document.getElementById(this.ids.surfaceStyle).value;
     this.config.surfaceOpacity = window.Atoms.readNumber(document.getElementById(this.ids.surfaceOpacity).value, this.config.surfaceOpacity, 0, 1);
     this.config.showWindField = document.getElementById(this.ids.showWindField).checked;
     this.config.showCollisionDebug = document.getElementById(this.ids.showCollisionDebug).checked;

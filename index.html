@@ -330,6 +330,15 @@
             <span>Which generated surface side to draw. Depth 1 cloth has separate front and back panels.</span>
           </label>
           <label>
+            Surface style
+            <select id="surfaceStyleInput">
+              <option value="tint">Tint</option>
+              <option value="checker">UV checker</option>
+              <option value="stripes">UV stripes</option>
+            </select>
+            <span>Procedural surface pattern. UV styles help verify image mapping before loading real textures.</span>
+          </label>
+          <label>
             Surface opacity
             <input id="surfaceOpacityInput" type="range" min="0" max="1" step="0.01">
             <span>Transparency of generated surface panels. Lower values keep the atoms and tubes dominant.</span>
@@ -382,25 +391,25 @@
     </aside>
   </main>
 
-  <script src="./src/config.js?v=20260704i"></script>
-  <script src="./src/math/vec3.js?v=20260704i"></script>
-  <script src="./src/math/camera.js?v=20260704i"></script>
-  <script src="./src/math/projection.js?v=20260704i"></script>
-  <script src="./src/simulation/Atom.js?v=20260704i"></script>
-  <script src="./src/simulation/Bond.js?v=20260704i"></script>
-  <script src="./src/simulation/BendingConstraint.js?v=20260704i"></script>
-  <script src="./src/simulation/Lattice.js?v=20260704i"></script>
-  <script src="./src/simulation/WindField.js?v=20260704i"></script>
-  <script src="./src/simulation/VerletSolver.js?v=20260704i"></script>
-  <script src="./src/simulation/EnergyModel.js?v=20260704i"></script>
-  <script src="./src/simulation/Diagnostics.js?v=20260704i"></script>
-  <script src="./src/rendering/DrawStyle.js?v=20260704i"></script>
-  <script src="./src/rendering/CanvasRenderer.js?v=20260704i"></script>
-  <script src="./src/input/PointerController.js?v=20260704i"></script>
-  <script src="./src/input/OrbitController.js?v=20260704i"></script>
-  <script src="./src/input/DragController.js?v=20260704i"></script>
-  <script src="./src/input/PinEditController.js?v=20260704i"></script>
-  <script src="./src/ui/ControlPanel.js?v=20260704i"></script>
-  <script src="./src/main.js?v=20260704i"></script>
+  <script src="./src/config.js?v=20260704j"></script>
+  <script src="./src/math/vec3.js?v=20260704j"></script>
+  <script src="./src/math/camera.js?v=20260704j"></script>
+  <script src="./src/math/projection.js?v=20260704j"></script>
+  <script src="./src/simulation/Atom.js?v=20260704j"></script>
+  <script src="./src/simulation/Bond.js?v=20260704j"></script>
+  <script src="./src/simulation/BendingConstraint.js?v=20260704j"></script>
+  <script src="./src/simulation/Lattice.js?v=20260704j"></script>
+  <script src="./src/simulation/WindField.js?v=20260704j"></script>
+  <script src="./src/simulation/VerletSolver.js?v=20260704j"></script>
+  <script src="./src/simulation/EnergyModel.js?v=20260704j"></script>
+  <script src="./src/simulation/Diagnostics.js?v=20260704j"></script>
+  <script src="./src/rendering/DrawStyle.js?v=20260704j"></script>
+  <script src="./src/rendering/CanvasRenderer.js?v=20260704j"></script>
+  <script src="./src/input/PointerController.js?v=20260704j"></script>
+  <script src="./src/input/OrbitController.js?v=20260704j"></script>
+  <script src="./src/input/DragController.js?v=20260704j"></script>
+  <script src="./src/input/PinEditController.js?v=20260704j"></script>
+  <script src="./src/ui/ControlPanel.js?v=20260704j"></script>
+  <script src="./src/main.js?v=20260704j"></script>
 </body>
 </html>
