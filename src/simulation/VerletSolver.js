@@ -2,8 +2,9 @@ window.Atoms = window.Atoms || {};
 
 window.Atoms.VerletSolver = class VerletSolver {
   constructor(config) {
-    this.configure(config);
     this.pinned = new Map();
+    this.world = new window.Atoms.PhysicsWorld();
+    this.configure(config);
   }
 
   configure(config) {
@@ -41,6 +42,54 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.effectiveBendStiffness = Math.min(1, this.bendStiffness * this.bendCadence);
     this.windStats = this.windStats || this.emptyWindStats();
     this.collisionStats = this.collisionStats || this.emptyCollisionStats();
+    this.springForcePipeline = this.createSpringForcePipeline();
+    this.constraintPipeline = this.createConstraintPipeline();
+    this.collisionPipeline = this.createCollisionPipeline();
+    this.lockConstraint = new window.Atoms.LockConstraintSolver();
+  }
+
+  createSpringForcePipeline() {
+    return [
+      new window.Atoms.GravityForce(),
+      new window.Atoms.WindForce(),
+      new window.Atoms.DistanceSpringForce(
+        (world) => world.lattice.bonds,
+        (world) => world.solver.stiffness,
+        (world) => world.solver.springDamping,
+      ),
+      new window.Atoms.DistanceSpringForce(
+        (world) => world.lattice.shearSprings,
+        (world) => world.solver.shearStiffness,
+        (world) => world.solver.shearDamping,
+      ),
+      new window.Atoms.DistanceSpringForce(
+        (world) => world.lattice.bendingConstraints,
+        (world) => world.solver.bendStiffness * 0.35,
+        (world) => world.solver.bendDamping,
+      ),
+      new window.Atoms.MouseSpringForce(),
+    ];
+  }
+
+  createConstraintPipeline() {
+    return [
+      new window.Atoms.DistanceConstraintSolver(
+        (world) => world.lattice.bonds,
+        (world) => world.solver.stiffness,
+      ),
+      new window.Atoms.DistanceConstraintSolver(
+        (world) => world.lattice.bendingConstraints,
+        (world) => world.solver.effectiveBendStiffness,
+        (world) => world.solver.bendCadence,
+      ),
+    ];
+  }
+
+  createCollisionPipeline() {
+    return [
+      new window.Atoms.ParticleCollisionSolver(),
+      new window.Atoms.ClothSelfCollisionSolver(),
+    ];
   }
 
   emptyWindStats() {
@@ -122,23 +171,38 @@ window.Atoms.VerletSolver = class VerletSolver {
   stepSpringForces(lattice, time) {
     const substeps = this.springSubsteps();
     const dt = 1 / substeps;
-    const dtSquared = dt * dt;
     const substepDamping = Math.pow(this.damping, dt);
-    const springStiffness = this.stiffness;
-    const bendSpringStiffness = this.bendStiffness * 0.35;
     this.collisionStats = this.emptyCollisionStats();
 
     for (let i = 0; i < substeps; i += 1) {
-      this.clearForces(lattice);
-      this.applyGravity(lattice);
-      this.applyWind(lattice, time);
-      this.applySpringForces(lattice.bonds, springStiffness, this.springDamping);
-      this.applySpringForces(lattice.shearSprings, this.shearStiffness, this.shearDamping);
-      this.applySpringForces(lattice.bendingConstraints, bendSpringStiffness, this.bendDamping);
-      this.applyMouseSpringForces();
-      this.integrateForces(lattice, substepDamping, dtSquared);
+      const world = this.world.bind(lattice, this, time, dt);
+      world.clearForces();
+      this.applyForcePipeline(world);
+      this.integrateForces(lattice, substepDamping, world.dtSquared);
       this.solveCollisions(lattice);
-      this.applyLocks(lattice);
+      this.solveLocks(world);
+    }
+  }
+
+  applyForcePipeline(world) {
+    for (const force of this.springForcePipeline) {
+      force.apply(world);
+    }
+  }
+
+  applyConstraintPipeline(world, iteration) {
+    for (const constraint of this.constraintPipeline) {
+      constraint.solve(world, iteration);
+    }
+  }
+
+  solveLocks(world) {
+    this.lockConstraint.solve(world);
+  }
+
+  applyCollisionPipeline(world, collisionRadius) {
+    for (const collision of this.collisionPipeline) {
+      collision.solve(world, collisionRadius);
     }
   }
 
@@ -193,34 +257,10 @@ window.Atoms.VerletSolver = class VerletSolver {
     }
 
     for (let i = 0; i < this.iterations; i += 1) {
-      this.solveDistanceConstraints(lattice.bonds, this.stiffness);
-      if (i % this.bendCadence === 0) {
-        this.solveDistanceConstraints(lattice.bendingConstraints, this.effectiveBendStiffness);
-      }
+      const world = this.world.bind(lattice, this, time, 1);
+      this.applyConstraintPipeline(world, i);
       this.solveCollisions(lattice);
-      this.applyLocks(lattice);
-    }
-  }
-
-  clearForces(lattice) {
-    for (const atom of lattice.atoms) {
-      atom.force.x = 0;
-      atom.force.y = 0;
-      atom.force.z = 0;
-    }
-  }
-
-  applyGravity(lattice) {
-    if (this.gravity <= 0) {
-      return;
-    }
-
-    for (const atom of lattice.atoms) {
-      if (atom.fixed || this.isHardPinned(atom)) {
-        continue;
-      }
-
-      atom.force.y -= this.gravity * this.mass;
+      this.solveLocks(world);
     }
   }
 
@@ -486,63 +526,6 @@ window.Atoms.VerletSolver = class VerletSolver {
     return this.windDirectionId;
   }
 
-  applySpringForces(constraints, stiffness, damping = 0) {
-    if (stiffness <= 0) {
-      return;
-    }
-
-    for (const constraint of constraints) {
-      const a = constraint.a;
-      const b = constraint.b;
-      const deltaX = b.position.x - a.position.x;
-      const deltaY = b.position.y - a.position.y;
-      const deltaZ = b.position.z - a.position.z;
-      const currentLength = Math.max(Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ), 0.0001);
-      const extension = currentLength - constraint.restLength;
-      const directionX = deltaX / currentLength;
-      const directionY = deltaY / currentLength;
-      const directionZ = deltaZ / currentLength;
-      const relativeVelocityX = (b.position.x - b.previousPosition.x) - (a.position.x - a.previousPosition.x);
-      const relativeVelocityY = (b.position.y - b.previousPosition.y) - (a.position.y - a.previousPosition.y);
-      const relativeVelocityZ = (b.position.z - b.previousPosition.z) - (a.position.z - a.previousPosition.z);
-      const relativeSpeed = relativeVelocityX * directionX + relativeVelocityY * directionY + relativeVelocityZ * directionZ;
-      const force = extension * stiffness + relativeSpeed * damping;
-      const forceX = directionX * force;
-      const forceY = directionY * force;
-      const forceZ = directionZ * force;
-      const aLocked = a.fixed || this.isHardPinned(a);
-      const bLocked = b.fixed || this.isHardPinned(b);
-
-      if (!aLocked) {
-        a.force.x += forceX;
-        a.force.y += forceY;
-        a.force.z += forceZ;
-      }
-
-      if (!bLocked) {
-        b.force.x -= forceX;
-        b.force.y -= forceY;
-        b.force.z -= forceZ;
-      }
-    }
-  }
-
-  applyMouseSpringForces() {
-    const stiffness = this.mouseStiffness;
-    const damping = this.mouseDamping;
-
-    for (const pin of this.pinned.values()) {
-      const atom = pin.atom;
-      if (!atom || atom.fixed) {
-        continue;
-      }
-
-      atom.force.x += (pin.current.x - atom.position.x) * stiffness - (atom.position.x - atom.previousPosition.x) * damping;
-      atom.force.y += (pin.current.y - atom.position.y) * stiffness - (atom.position.y - atom.previousPosition.y) * damping;
-      atom.force.z += (pin.current.z - atom.position.z) * stiffness - (atom.position.z - atom.previousPosition.z) * damping;
-    }
-  }
-
   integrateForces(lattice, damping, dtSquared) {
     for (const atom of lattice.atoms) {
       const pinned = this.pinned.get(atom.id);
@@ -578,395 +561,16 @@ window.Atoms.VerletSolver = class VerletSolver {
     }
   }
 
-  solveDistanceConstraints(constraints, stiffness) {
-    if (stiffness <= 0) {
-      return;
-    }
-
-    for (const constraint of constraints) {
-      const a = constraint.a;
-      const b = constraint.b;
-      const deltaX = b.position.x - a.position.x;
-      const deltaY = b.position.y - a.position.y;
-      const deltaZ = b.position.z - a.position.z;
-      const currentLength = Math.max(Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ), 0.0001);
-      const difference = (currentLength - constraint.restLength) / currentLength;
-      const correctionX = deltaX * difference * stiffness;
-      const correctionY = deltaY * difference * stiffness;
-      const correctionZ = deltaZ * difference * stiffness;
-      const aLocked = a.fixed || this.isHardPinned(a);
-      const bLocked = b.fixed || this.isHardPinned(b);
-
-      if (!aLocked && !bLocked) {
-        a.position.x += correctionX * 0.5;
-        a.position.y += correctionY * 0.5;
-        a.position.z += correctionZ * 0.5;
-        b.position.x -= correctionX * 0.5;
-        b.position.y -= correctionY * 0.5;
-        b.position.z -= correctionZ * 0.5;
-      } else if (!aLocked) {
-        a.position.x += correctionX;
-        a.position.y += correctionY;
-        a.position.z += correctionZ;
-      } else if (!bLocked) {
-        b.position.x -= correctionX;
-        b.position.y -= correctionY;
-        b.position.z -= correctionZ;
-      }
-    }
-  }
-
   solveCollisions(lattice) {
     if (!this.collisionEnabled || this.collisionStiffness <= 0 || this.collisionRadiusScale <= 0) {
       return;
     }
 
+    const world = this.world.bind(lattice, this, 0, 1);
+    const collisionRadius = Math.max(0.001, lattice.atomRadius || 0) * this.collisionRadiusScale;
     const passes = Math.max(1, Math.round(this.collisionPasses));
     for (let i = 0; i < passes; i += 1) {
-      this.solveCollisionPass(lattice);
-    }
-  }
-
-  solveCollisionPass(lattice) {
-    const collisionRadius = Math.max(0.001, lattice.atomRadius || 0) * this.collisionRadiusScale;
-    const minDistance = collisionRadius * 2;
-    const minDistanceSquared = minDistance * minDistance;
-    const cellSize = Math.max(0.001, minDistance);
-    const buckets = this.buildCollisionBuckets(lattice, cellSize);
-    const excludedPairs = this.collisionExcludedPairs(lattice);
-
-    for (const atom of lattice.atoms) {
-      const cellX = Math.floor(atom.position.x / cellSize);
-      const cellY = Math.floor(atom.position.y / cellSize);
-      const cellZ = Math.floor(atom.position.z / cellSize);
-
-      for (let z = cellZ - 1; z <= cellZ + 1; z += 1) {
-        for (let y = cellY - 1; y <= cellY + 1; y += 1) {
-          for (let x = cellX - 1; x <= cellX + 1; x += 1) {
-            const bucket = buckets.get(this.collisionCellKey(x, y, z));
-            if (!bucket) {
-              continue;
-            }
-
-            for (const other of bucket) {
-              if (other.id <= atom.id || excludedPairs.has(this.collisionPairKey(atom, other))) {
-                continue;
-              }
-
-              this.collisionStats.testedPairs += 1;
-              this.solveAtomCollision(atom, other, minDistance, minDistanceSquared);
-            }
-          }
-        }
-      }
-    }
-
-    this.solveClothSelfCollisions(lattice, collisionRadius);
-  }
-
-  buildCollisionBuckets(lattice, cellSize) {
-    const buckets = new Map();
-
-    for (const atom of lattice.atoms) {
-      const x = Math.floor(atom.position.x / cellSize);
-      const y = Math.floor(atom.position.y / cellSize);
-      const z = Math.floor(atom.position.z / cellSize);
-      const key = this.collisionCellKey(x, y, z);
-      let bucket = buckets.get(key);
-
-      if (!bucket) {
-        bucket = [];
-        buckets.set(key, bucket);
-      }
-
-      bucket.push(atom);
-    }
-
-    return buckets;
-  }
-
-  solveAtomCollision(a, b, minDistance, minDistanceSquared) {
-    const aLocked = a.fixed || this.isHardPinned(a);
-    const bLocked = b.fixed || this.isHardPinned(b);
-
-    if (aLocked && bLocked) {
-      return;
-    }
-
-    let deltaX = b.position.x - a.position.x;
-    let deltaY = b.position.y - a.position.y;
-    let deltaZ = b.position.z - a.position.z;
-    let distanceSquared = deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ;
-
-    if (distanceSquared >= minDistanceSquared) {
-      return;
-    }
-
-    if (distanceSquared < 0.000001) {
-      deltaX = ((b.id * 928371 + a.id * 364479) % 1000) / 1000 - 0.5;
-      deltaY = ((b.id * 193496 + a.id * 834927) % 1000) / 1000 - 0.5;
-      deltaZ = ((b.id * 738561 + a.id * 129837) % 1000) / 1000 - 0.5;
-      distanceSquared = deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ;
-    }
-
-    const distance = Math.max(Math.sqrt(distanceSquared), 0.000001);
-    const overlap = (minDistance - distance) * this.collisionStiffness;
-
-    if (overlap <= 0) {
-      return;
-    }
-
-    const normalX = deltaX / distance;
-    const normalY = deltaY / distance;
-    const normalZ = deltaZ / distance;
-    this.collisionStats.corrections += 1;
-    this.collisionStats.maxCorrection = Math.max(this.collisionStats.maxCorrection, overlap);
-    this.collisionStats.activeAtoms.add(a.id);
-    this.collisionStats.activeAtoms.add(b.id);
-
-    if (!aLocked && !bLocked) {
-      const correction = overlap * 0.5;
-      a.position.x -= normalX * correction;
-      a.position.y -= normalY * correction;
-      a.position.z -= normalZ * correction;
-      b.position.x += normalX * correction;
-      b.position.y += normalY * correction;
-      b.position.z += normalZ * correction;
-    } else if (!aLocked) {
-      a.position.x -= normalX * overlap;
-      a.position.y -= normalY * overlap;
-      a.position.z -= normalZ * overlap;
-    } else if (!bLocked) {
-      b.position.x += normalX * overlap;
-      b.position.y += normalY * overlap;
-      b.position.z += normalZ * overlap;
-    }
-  }
-
-  solveClothSelfCollisions(lattice, collisionRadius) {
-    if (lattice.depth !== 1 || !lattice.surfacePanels || lattice.surfacePanels.length === 0) {
-      return;
-    }
-
-    const panels = lattice.surfacePanels.filter((panel) => panel.side === "front");
-    if (panels.length === 0) {
-      return;
-    }
-
-    const thickness = Math.max(0.001, collisionRadius * 0.85);
-
-    for (const panel of panels) {
-      this.solveClothTriangleCollisions(lattice, panel.a, panel.b, panel.c, thickness);
-      this.solveClothTriangleCollisions(lattice, panel.a, panel.c, panel.d, thickness);
-    }
-  }
-
-  solveClothTriangleCollisions(lattice, a, b, c, thickness) {
-    const normal = this.triangleUnitNormal(a.position, b.position, c.position);
-
-    if (normal.length < 0.000001) {
-      return;
-    }
-
-    for (const atom of lattice.atoms) {
-      if (this.isLocalClothCollision(atom, a, b, c)) {
-        continue;
-      }
-
-      this.solveVertexTriangleCollision(atom, a, b, c, normal, thickness);
-    }
-  }
-
-  triangleUnitNormal(a, b, c) {
-    const abX = b.x - a.x;
-    const abY = b.y - a.y;
-    const abZ = b.z - a.z;
-    const acX = c.x - a.x;
-    const acY = c.y - a.y;
-    const acZ = c.z - a.z;
-    const nx = abY * acZ - abZ * acY;
-    const ny = abZ * acX - abX * acZ;
-    const nz = abX * acY - abY * acX;
-    const length = Math.hypot(nx, ny, nz);
-
-    if (length < 0.000001) {
-      return { x: 0, y: 0, z: 0, length: 0 };
-    }
-
-    return { x: nx / length, y: ny / length, z: nz / length, length };
-  }
-
-  isLocalClothCollision(atom, a, b, c) {
-    if (atom.id === a.id || atom.id === b.id || atom.id === c.id) {
-      return true;
-    }
-
-    const minX = Math.min(a.gridX, b.gridX, c.gridX) - 1;
-    const maxX = Math.max(a.gridX, b.gridX, c.gridX) + 1;
-    const minY = Math.min(a.gridY, b.gridY, c.gridY) - 1;
-    const maxY = Math.max(a.gridY, b.gridY, c.gridY) + 1;
-
-    return atom.gridZ === a.gridZ
-      && atom.gridX >= minX
-      && atom.gridX <= maxX
-      && atom.gridY >= minY
-      && atom.gridY <= maxY;
-  }
-
-  solveVertexTriangleCollision(atom, a, b, c, normal, thickness) {
-    const point = atom.position;
-    const signedDistance = (
-      (point.x - a.position.x) * normal.x +
-      (point.y - a.position.y) * normal.y +
-      (point.z - a.position.z) * normal.z
-    );
-    const previousSignedDistance = (
-      (atom.previousPosition.x - a.position.x) * normal.x +
-      (atom.previousPosition.y - a.position.y) * normal.y +
-      (atom.previousPosition.z - a.position.z) * normal.z
-    );
-
-    if (Math.abs(signedDistance) >= thickness && signedDistance * previousSignedDistance > 0) {
-      return;
-    }
-
-    const projected = {
-      x: point.x - normal.x * signedDistance,
-      y: point.y - normal.y * signedDistance,
-      z: point.z - normal.z * signedDistance,
-    };
-    const bary = this.triangleBarycentric(projected, a.position, b.position, c.position);
-
-    if (!bary || bary.u < -0.035 || bary.v < -0.035 || bary.w < -0.035) {
-      return;
-    }
-
-    const side = signedDistance >= 0 ? 1 : -1;
-    const targetDistance = thickness * side;
-    const correction = (targetDistance - signedDistance) * this.collisionStiffness;
-
-    if (Math.abs(correction) <= 0.000001) {
-      return;
-    }
-
-    this.applyVertexTriangleCorrection(atom, a, b, c, bary, normal, correction);
-  }
-
-  triangleBarycentric(point, a, b, c) {
-    const v0x = b.x - a.x;
-    const v0y = b.y - a.y;
-    const v0z = b.z - a.z;
-    const v1x = c.x - a.x;
-    const v1y = c.y - a.y;
-    const v1z = c.z - a.z;
-    const v2x = point.x - a.x;
-    const v2y = point.y - a.y;
-    const v2z = point.z - a.z;
-    const d00 = v0x * v0x + v0y * v0y + v0z * v0z;
-    const d01 = v0x * v1x + v0y * v1y + v0z * v1z;
-    const d11 = v1x * v1x + v1y * v1y + v1z * v1z;
-    const d20 = v2x * v0x + v2y * v0y + v2z * v0z;
-    const d21 = v2x * v1x + v2y * v1y + v2z * v1z;
-    const denominator = d00 * d11 - d01 * d01;
-
-    if (Math.abs(denominator) < 0.000001) {
-      return null;
-    }
-
-    const v = (d11 * d20 - d01 * d21) / denominator;
-    const w = (d00 * d21 - d01 * d20) / denominator;
-    const u = 1 - v - w;
-    return { u, v, w };
-  }
-
-  applyVertexTriangleCorrection(atom, a, b, c, bary, normal, correction) {
-    const atomLocked = atom.fixed || this.isHardPinned(atom);
-    const weights = [
-      { atom: a, weight: bary.u },
-      { atom: b, weight: bary.v },
-      { atom: c, weight: bary.w },
-    ];
-    const movableTriangleWeight = weights.reduce((total, entry) => (
-      entry.atom.fixed || this.isHardPinned(entry.atom) ? total : total + Math.max(0, entry.weight)
-    ), 0);
-
-    if (atomLocked && movableTriangleWeight <= 0) {
-      return;
-    }
-
-    const atomShare = atomLocked ? 0 : (movableTriangleWeight > 0 ? 0.55 : 1);
-    const triangleShare = 1 - atomShare;
-    const correctionLength = Math.abs(correction);
-
-    if (!atomLocked) {
-      atom.position.x += normal.x * correction * atomShare;
-      atom.position.y += normal.y * correction * atomShare;
-      atom.position.z += normal.z * correction * atomShare;
-      this.collisionStats.activeAtoms.add(atom.id);
-    }
-
-    if (movableTriangleWeight > 0 && triangleShare > 0) {
-      for (const entry of weights) {
-        if (entry.atom.fixed || this.isHardPinned(entry.atom)) {
-          continue;
-        }
-
-        const share = triangleShare * Math.max(0, entry.weight) / movableTriangleWeight;
-        entry.atom.position.x -= normal.x * correction * share;
-        entry.atom.position.y -= normal.y * correction * share;
-        entry.atom.position.z -= normal.z * correction * share;
-        this.collisionStats.activeAtoms.add(entry.atom.id);
-      }
-    }
-
-    this.collisionStats.corrections += 1;
-    this.collisionStats.maxCorrection = Math.max(this.collisionStats.maxCorrection, correctionLength);
-  }
-
-  collisionExcludedPairs(lattice) {
-    if (
-      lattice.collisionExcludedPairs
-      && lattice.collisionExcludedBondCount === lattice.bonds.length
-      && lattice.collisionExcludedShearCount === lattice.shearSprings.length
-    ) {
-      return lattice.collisionExcludedPairs;
-    }
-
-    const excluded = new Set();
-    const add = (constraint) => {
-      excluded.add(this.collisionPairKey(constraint.a, constraint.b));
-    };
-
-    for (const bond of lattice.bonds) {
-      add(bond);
-    }
-
-    for (const shear of lattice.shearSprings) {
-      add(shear);
-    }
-
-    lattice.collisionExcludedPairs = excluded;
-    lattice.collisionExcludedBondCount = lattice.bonds.length;
-    lattice.collisionExcludedShearCount = lattice.shearSprings.length;
-    return excluded;
-  }
-
-  collisionPairKey(a, b) {
-    return a.id < b.id ? `${a.id}:${b.id}` : `${b.id}:${a.id}`;
-  }
-
-  collisionCellKey(x, y, z) {
-    return `${x}:${y}:${z}`;
-  }
-
-  applyLocks(lattice) {
-    for (const atom of lattice.atoms) {
-      const pinned = this.pinned.get(atom.id);
-      if (atom.fixed) {
-        window.Atoms.copy(atom.position, atom.fixedPosition);
-      } else if (pinned && this.isHardGrab()) {
-        window.Atoms.copy(atom.position, pinned.current);
-      }
+      this.applyCollisionPipeline(world, collisionRadius);
     }
   }
 
