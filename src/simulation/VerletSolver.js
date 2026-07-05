@@ -402,14 +402,17 @@ window.Atoms.VerletSolver = class VerletSolver {
       y: relative.y - normal.y * normalSpeed,
       z: relative.z - normal.z * normalSpeed,
     };
+    const tangentSpeed = Math.hypot(tangent.x, tangent.y, tangent.z);
     const areaScale = doubleArea / (2 * lattice.restLength * lattice.restLength);
     const pressure = normalSpeed * Math.abs(normalSpeed) * (0.65 + this.windDrag * 0.7) * this.windResponse * areaScale;
     const skin = this.windDrag * this.windResponse * 0.01 * areaScale;
+    const flutter = this.sampleFlutter(centroid, time);
+    const tangentialLift = tangentSpeed * tangentSpeed * flutter * this.windResponse * 0.18 * areaScale;
 
     return {
-      x: normal.x * pressure + tangent.x * skin,
-      y: normal.y * pressure + tangent.y * skin,
-      z: normal.z * pressure + tangent.z * skin,
+      x: normal.x * (pressure + tangentialLift) + tangent.x * skin,
+      y: normal.y * (pressure + tangentialLift) + tangent.y * skin,
+      z: normal.z * (pressure + tangentialLift) + tangent.z * skin,
     };
   }
 

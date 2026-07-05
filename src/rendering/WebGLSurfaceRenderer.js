@@ -18,6 +18,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     this.edgeColors = [];
     this.bondPositions = [];
     this.bondColors = [];
+    this.bondSides = [];
     this.atomPositions = [];
     this.atomColors = [];
     this.atomSizes = [];
@@ -26,6 +27,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     this.frontTextureImage = null;
     this.backTexture = null;
     this.backTextureImage = null;
+    this.attributeUploads = new Map();
 
     if (this.available) {
       try {
@@ -41,6 +43,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     const gl = this.gl;
     this.program = this.createProgram(this.vertexShaderSource(), this.fragmentShaderSource());
     this.lineProgram = this.createProgram(this.lineVertexShaderSource(), this.lineFragmentShaderSource());
+    this.tubeProgram = this.createProgram(this.tubeVertexShaderSource(), this.tubeFragmentShaderSource());
     this.atomProgram = this.createProgram(this.atomVertexShaderSource(), this.atomFragmentShaderSource());
     this.locations = {
       position: gl.getAttribLocation(this.program, "a_position"),
@@ -52,6 +55,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
       sunDirection: gl.getUniformLocation(this.program, "u_sunDirection"),
       ambient: gl.getUniformLocation(this.program, "u_ambient"),
       intensity: gl.getUniformLocation(this.program, "u_intensity"),
+      lightingModel: gl.getUniformLocation(this.program, "u_lightingModel"),
       opacity: gl.getUniformLocation(this.program, "u_opacity"),
       useFrontTexture: gl.getUniformLocation(this.program, "u_useFrontTexture"),
       useBackTexture: gl.getUniformLocation(this.program, "u_useBackTexture"),
@@ -63,12 +67,26 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
       color: gl.getAttribLocation(this.lineProgram, "a_color"),
       matrix: gl.getUniformLocation(this.lineProgram, "u_matrix"),
     };
+    this.tubeLocations = {
+      position: gl.getAttribLocation(this.tubeProgram, "a_position"),
+      color: gl.getAttribLocation(this.tubeProgram, "a_color"),
+      side: gl.getAttribLocation(this.tubeProgram, "a_side"),
+      matrix: gl.getUniformLocation(this.tubeProgram, "u_matrix"),
+      sunDirection: gl.getUniformLocation(this.tubeProgram, "u_sunDirection"),
+      cameraRight: gl.getUniformLocation(this.tubeProgram, "u_cameraRight"),
+      cameraForward: gl.getUniformLocation(this.tubeProgram, "u_cameraForward"),
+      ambient: gl.getUniformLocation(this.tubeProgram, "u_ambient"),
+      intensity: gl.getUniformLocation(this.tubeProgram, "u_intensity"),
+    };
     this.atomLocations = {
       position: gl.getAttribLocation(this.atomProgram, "a_position"),
       color: gl.getAttribLocation(this.atomProgram, "a_color"),
       size: gl.getAttribLocation(this.atomProgram, "a_size"),
       mode: gl.getAttribLocation(this.atomProgram, "a_mode"),
       matrix: gl.getUniformLocation(this.atomProgram, "u_matrix"),
+      sunDirection: gl.getUniformLocation(this.atomProgram, "u_sunDirection"),
+      ambient: gl.getUniformLocation(this.atomProgram, "u_ambient"),
+      intensity: gl.getUniformLocation(this.atomProgram, "u_intensity"),
     };
     this.positionBuffer = gl.createBuffer();
     this.normalBuffer = gl.createBuffer();
@@ -79,6 +97,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     this.edgeColorBuffer = gl.createBuffer();
     this.bondBuffer = gl.createBuffer();
     this.bondColorBuffer = gl.createBuffer();
+    this.bondSideBuffer = gl.createBuffer();
     this.atomBuffer = gl.createBuffer();
     this.atomColorBuffer = gl.createBuffer();
     this.atomSizeBuffer = gl.createBuffer();
@@ -162,6 +181,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     gl.uniform3f(this.locations.sunDirection, sun.x, sun.y, sun.z);
     gl.uniform1f(this.locations.ambient, this.config.surfaceLighting ? window.Atoms.clamp(this.config.sunAmbient, 0, 1) : 1);
     gl.uniform1f(this.locations.intensity, this.config.surfaceLighting ? window.Atoms.clamp(this.config.sunIntensity, 0, 2) : 0);
+    gl.uniform1i(this.locations.lightingModel, this.config.surfaceLightingModel === "cloth" ? 1 : 0);
     gl.uniform1f(this.locations.opacity, window.Atoms.clamp(this.config.surfaceOpacity, 0, 1));
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.frontTexture || this.whiteTexture);
@@ -250,18 +270,28 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     }
 
     const gl = this.gl;
-    gl.useProgram(this.lineProgram);
-    this.bindAttribute(this.bondBuffer, this.bondPositions, this.lineLocations.position, 3);
-    this.bindAttribute(this.bondColorBuffer, this.bondColors, this.lineLocations.color, 4);
-    gl.uniformMatrix4fv(this.lineLocations.matrix, false, this.cameraMatrix(camera));
-    gl.lineWidth(1);
-    gl.drawArrays(gl.LINES, 0, count);
+    const sun = this.sunDirection();
+    const basis = camera.getBasis();
+    gl.useProgram(this.tubeProgram);
+    this.bindAttribute(this.bondBuffer, this.bondPositions, this.tubeLocations.position, 3);
+    this.bindAttribute(this.bondColorBuffer, this.bondColors, this.tubeLocations.color, 4);
+    this.bindAttribute(this.bondSideBuffer, this.bondSides, this.tubeLocations.side, 1);
+    gl.uniformMatrix4fv(this.tubeLocations.matrix, false, this.cameraMatrix(camera));
+    gl.uniform3f(this.tubeLocations.sunDirection, sun.x, sun.y, sun.z);
+    gl.uniform3f(this.tubeLocations.cameraRight, basis.right.x, basis.right.y, basis.right.z);
+    gl.uniform3f(this.tubeLocations.cameraForward, basis.forward.x, basis.forward.y, basis.forward.z);
+    gl.uniform1f(this.tubeLocations.ambient, this.config.surfaceLighting ? window.Atoms.clamp(this.config.sunAmbient, 0, 1) : 1);
+    gl.uniform1f(this.tubeLocations.intensity, this.config.surfaceLighting ? window.Atoms.clamp(this.config.sunIntensity, 0, 2) : 0);
+    gl.drawArrays(gl.TRIANGLES, 0, count);
   }
 
   buildBondGeometry(lattice, camera) {
     this.bondPositions.length = 0;
     this.bondColors.length = 0;
+    this.bondSides.length = 0;
     const depthRange = this.depthRange(lattice.atoms, camera);
+    const basis = camera.getBasis();
+    const zoom = Math.max(0.0001, camera.zoom || 1);
 
     for (const bond of lattice.bonds) {
       const a = bond.a.position;
@@ -272,12 +302,39 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
       const color = this.config.simpleBondColors
         ? this.neutralBondColor(depthShade)
         : this.bondColor(depthShade, strain);
-
-      this.bondPositions.push(a.x, a.y, a.z, b.x, b.y, b.z);
-      this.bondColors.push(color.r, color.g, color.b, color.a, color.r, color.g, color.b, color.a);
+      const lineWidth = (1.8 + depthShade * 2.1 + Math.min(1, Math.abs(strain) * 5) * 2.7)
+        * this.config.zoomVisualScale;
+      const halfWidth = lineWidth * 0.5;
+      const screenX = (b.x - a.x) * basis.right.x + (b.y - a.y) * basis.right.y + (b.z - a.z) * basis.right.z;
+      const screenY = -((b.x - a.x) * basis.up.x + (b.y - a.y) * basis.up.y + (b.z - a.z) * basis.up.z);
+      const screenLength = Math.hypot(screenX, screenY);
+      const perpendicularX = screenLength > 0.000001 ? -screenY / screenLength : 0;
+      const perpendicularY = screenLength > 0.000001 ? screenX / screenLength : 1;
+      const worldScale = halfWidth / zoom;
+      const offset = {
+        x: (basis.right.x * perpendicularX - basis.up.x * perpendicularY) * worldScale,
+        y: (basis.right.y * perpendicularX - basis.up.y * perpendicularY) * worldScale,
+        z: (basis.right.z * perpendicularX - basis.up.z * perpendicularY) * worldScale,
+      };
+      this.pushRibbonVertex(a, offset, 1, color);
+      this.pushRibbonVertex(b, offset, 1, color);
+      this.pushRibbonVertex(b, offset, -1, color);
+      this.pushRibbonVertex(a, offset, 1, color);
+      this.pushRibbonVertex(b, offset, -1, color);
+      this.pushRibbonVertex(a, offset, -1, color);
     }
 
     return this.bondPositions.length / 3;
+  }
+
+  pushRibbonVertex(position, offset, direction, color) {
+    this.bondPositions.push(
+      position.x + offset.x * direction,
+      position.y + offset.y * direction,
+      position.z + offset.z * direction,
+    );
+    this.bondColors.push(color.r, color.g, color.b, color.a);
+    this.bondSides.push(direction);
   }
 
   drawAtoms(lattice, camera) {
@@ -297,6 +354,16 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     this.bindAttribute(this.atomSizeBuffer, this.atomSizes, this.atomLocations.size, 1);
     this.bindAttribute(this.atomModeBuffer, this.atomModes, this.atomLocations.mode, 1);
     gl.uniformMatrix4fv(this.atomLocations.matrix, false, this.cameraMatrix(camera));
+    const sun = this.sunDirection();
+    const basis = camera.getBasis();
+    const sunView = {
+      x: sun.x * basis.right.x + sun.y * basis.right.y + sun.z * basis.right.z,
+      y: -(sun.x * basis.up.x + sun.y * basis.up.y + sun.z * basis.up.z),
+      z: -(sun.x * basis.forward.x + sun.y * basis.forward.y + sun.z * basis.forward.z),
+    };
+    gl.uniform3f(this.atomLocations.sunDirection, sunView.x, sunView.y, sunView.z);
+    gl.uniform1f(this.atomLocations.ambient, this.config.surfaceLighting ? window.Atoms.clamp(this.config.sunAmbient, 0, 1) : 1);
+    gl.uniform1f(this.atomLocations.intensity, this.config.surfaceLighting ? window.Atoms.clamp(this.config.sunIntensity, 0, 2) : 0);
     gl.drawArrays(gl.POINTS, 0, count);
   }
 
@@ -343,7 +410,6 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     const fallbackNormals = this.emptyAtomNormals(lattice);
 
     for (const panel of panels) {
-      const normal = this.panelNormal(panel);
       let sideNormals = normalsBySide.get(panel.side);
 
       if (!sideNormals) {
@@ -351,14 +417,8 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
         normalsBySide.set(panel.side, sideNormals);
       }
 
-      for (const atom of [panel.a, panel.b, panel.c, panel.d]) {
-        sideNormals[atom.id].x += normal.x;
-        sideNormals[atom.id].y += normal.y;
-        sideNormals[atom.id].z += normal.z;
-        fallbackNormals[atom.id].x += normal.x;
-        fallbackNormals[atom.id].y += normal.y;
-        fallbackNormals[atom.id].z += normal.z;
-      }
+      this.accumulateTriangleNormal(sideNormals, fallbackNormals, panel.a, panel.b, panel.c);
+      this.accumulateTriangleNormal(sideNormals, fallbackNormals, panel.a, panel.c, panel.d);
     }
 
     const normalizedFallback = this.normalizeAtomNormals(fallbackNormals);
@@ -373,6 +433,22 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
 
   emptyAtomNormals(lattice) {
     return Array.from({ length: lattice.atoms.length }, () => ({ x: 0, y: 0, z: 0 }));
+  }
+
+  accumulateTriangleNormal(sideNormals, fallbackNormals, a, b, c) {
+    const normal = this.triangleAreaNormal(a.position, b.position, c.position);
+    this.addNormal(sideNormals[a.id], normal);
+    this.addNormal(sideNormals[b.id], normal);
+    this.addNormal(sideNormals[c.id], normal);
+    this.addNormal(fallbackNormals[a.id], normal);
+    this.addNormal(fallbackNormals[b.id], normal);
+    this.addNormal(fallbackNormals[c.id], normal);
+  }
+
+  addNormal(target, normal) {
+    target.x += normal.x;
+    target.y += normal.y;
+    target.z += normal.z;
   }
 
   normalizeAtomNormals(normals, fallbackNormals) {
@@ -487,18 +563,11 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
   }
 
   panelNormal(panel) {
-    const a = panel.a.position;
-    const b = panel.b.position;
-    const d = panel.d.position;
-    const abX = b.x - a.x;
-    const abY = b.y - a.y;
-    const abZ = b.z - a.z;
-    const adX = d.x - a.x;
-    const adY = d.y - a.y;
-    const adZ = d.z - a.z;
-    const nx = abY * adZ - abZ * adY;
-    const ny = abZ * adX - abX * adZ;
-    const nz = abX * adY - abY * adX;
+    const first = this.triangleAreaNormal(panel.a.position, panel.b.position, panel.c.position);
+    const second = this.triangleAreaNormal(panel.a.position, panel.c.position, panel.d.position);
+    const nx = first.x + second.x;
+    const ny = first.y + second.y;
+    const nz = first.z + second.z;
     const length = Math.hypot(nx, ny, nz);
 
     if (length < 0.000001) {
@@ -506,6 +575,20 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     }
 
     return { x: nx / length, y: ny / length, z: nz / length };
+  }
+
+  triangleAreaNormal(a, b, c) {
+    const abX = b.x - a.x;
+    const abY = b.y - a.y;
+    const abZ = b.z - a.z;
+    const acX = c.x - a.x;
+    const acY = c.y - a.y;
+    const acZ = c.z - a.z;
+    return {
+      x: abY * acZ - abZ * acY,
+      y: abZ * acX - abX * acZ,
+      z: abX * acY - abY * acX,
+    };
   }
 
   depthRange(atoms, camera) {
@@ -674,10 +757,35 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     }
 
     const gl = this.gl;
+    const valueCount = values.length;
+    let upload = this.attributeUploads.get(buffer);
+
+    if (!upload || upload.capacity < valueCount) {
+      const capacity = this.nextBufferCapacity(valueCount);
+      upload = {
+        capacity,
+        values: new Float32Array(capacity),
+      };
+      this.attributeUploads.set(buffer, upload);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, capacity * Float32Array.BYTES_PER_ELEMENT, gl.DYNAMIC_DRAW);
+    }
+
+    upload.values.set(values, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(values), gl.DYNAMIC_DRAW);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, upload.values.subarray(0, valueCount));
     gl.enableVertexAttribArray(location);
     gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
+  }
+
+  nextBufferCapacity(valueCount) {
+    let capacity = 256;
+
+    while (capacity < valueCount) {
+      capacity *= 2;
+    }
+
+    return capacity;
   }
 
   createProgram(vertexSource, fragmentSource) {
@@ -739,6 +847,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
       uniform vec3 u_sunDirection;
       uniform float u_ambient;
       uniform float u_intensity;
+      uniform int u_lightingModel;
       uniform float u_opacity;
       uniform bool u_useFrontTexture;
       uniform bool u_useBackTexture;
@@ -748,9 +857,17 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
       varying float v_textureSide;
       void main() {
         vec3 normal = normalize(v_normal);
-        float front = max(dot(normal, normalize(u_sunDirection)), 0.0);
-        float back = max(dot(-normal, normalize(u_sunDirection)), 0.0) * 0.18;
-        float light = clamp(u_ambient + (front + back) * u_intensity, 0.12, 1.65);
+        vec3 sun = normalize(u_sunDirection);
+        float front = max(dot(normal, sun), 0.0);
+        float back = max(dot(-normal, sun), 0.0);
+        float light = clamp(u_ambient + (front + back * 0.18) * u_intensity, 0.12, 1.65);
+        if (u_lightingModel == 1) {
+          float wrap = clamp((dot(normal, sun) + 0.55) / 1.55, 0.0, 1.0);
+          float clothBack = back * 0.34;
+          float viewLift = pow(max(abs(normal.z), 0.0), 0.8) * 0.12;
+          float clothLight = u_ambient * 1.08 + (wrap * 0.78 + clothBack + viewLift) * u_intensity;
+          light = clamp(clothLight, 0.24, 1.38);
+        }
         bool isBack = v_textureSide > 0.5;
         vec4 textureColor = vec4(1.0);
         if (!isBack && u_useFrontTexture) {
@@ -787,6 +904,46 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     `;
   }
 
+  tubeVertexShaderSource() {
+    return `
+      attribute vec3 a_position;
+      attribute vec4 a_color;
+      attribute float a_side;
+      uniform mat4 u_matrix;
+      varying vec4 v_color;
+      varying float v_side;
+      void main() {
+        gl_Position = u_matrix * vec4(a_position, 1.0);
+        v_color = a_color;
+        v_side = a_side;
+      }
+    `;
+  }
+
+  tubeFragmentShaderSource() {
+    return `
+      precision mediump float;
+      uniform vec3 u_sunDirection;
+      uniform vec3 u_cameraRight;
+      uniform vec3 u_cameraForward;
+      uniform float u_ambient;
+      uniform float u_intensity;
+      varying vec4 v_color;
+      varying float v_side;
+      void main() {
+        float side = clamp(v_side, -1.0, 1.0);
+        float crown = sqrt(max(0.0, 1.0 - side * side));
+        vec3 normal = normalize(u_cameraRight * side - u_cameraForward * crown);
+        vec3 sun = normalize(u_sunDirection);
+        float front = max(dot(normal, sun), 0.0);
+        float rim = smoothstep(0.42, 1.0, abs(side)) * 0.18;
+        float highlight = pow(max(dot(normalize(normal + sun), -normalize(u_cameraForward)), 0.0), 18.0) * 0.28;
+        float light = clamp(u_ambient + front * u_intensity + rim + highlight * u_intensity, 0.16, 1.75);
+        gl_FragColor = vec4(v_color.rgb * light, v_color.a);
+      }
+    `;
+  }
+
   atomVertexShaderSource() {
     return `
       attribute vec3 a_position;
@@ -808,6 +965,9 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
   atomFragmentShaderSource() {
     return `
       precision mediump float;
+      uniform vec3 u_sunDirection;
+      uniform float u_ambient;
+      uniform float u_intensity;
       varying vec4 v_color;
       varying float v_mode;
       void main() {
@@ -824,15 +984,16 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
         }
 
         vec3 normal = normalize(vec3(centered.x, -centered.y, sqrt(max(0.0, 1.0 - distanceFromCenter))));
-        vec3 light = normalize(vec3(-0.42, 0.58, 0.7));
+        vec3 light = normalize(u_sunDirection);
         vec3 view = vec3(0.0, 0.0, 1.0);
         float diffuse = max(dot(normal, light), 0.0);
         float specular = pow(max(dot(reflect(-light, normal), view), 0.0), 24.0);
         float rim = smoothstep(0.62, 0.98, distanceFromCenter);
         float edgeAlpha = 1.0 - smoothstep(0.92, 1.0, distanceFromCenter);
-        vec3 shaded = v_color.rgb * (0.34 + diffuse * 0.78);
+        float lightAmount = clamp(u_ambient + diffuse * u_intensity, 0.18, 1.65);
+        vec3 shaded = v_color.rgb * lightAmount;
         shaded = mix(shaded, vec3(0.02, 0.04, 0.06), rim * 0.34);
-        shaded += vec3(1.0, 0.96, 0.86) * specular * 0.42;
+        shaded += vec3(1.0, 0.96, 0.86) * specular * 0.42 * u_intensity;
         gl_FragColor = vec4(shaded, v_color.a * edgeAlpha);
       }
     `;

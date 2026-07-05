@@ -64,6 +64,7 @@ window.Atoms.defaultConfig = Object.freeze({
   flipBackTexture: false,
   surfaceOpacity: 0.22,
   surfaceLighting: true,
+  surfaceLightingModel: "standard",
   sunAzimuth: 35,
   sunElevation: 35,
   sunIntensity: 0.75,
@@ -114,7 +115,7 @@ window.Atoms.windProfiles = Object.freeze({
   flag: Object.freeze({
     label: "Flag",
     windEnabled: true,
-    windDirection: "z-",
+    windDirection: "x+",
     windStrength: 1.15,
     windTurbulence: 1.05,
     windScale: 260,
@@ -159,6 +160,7 @@ window.Atoms.materialProperties = Object.freeze({
     mouseStiffness: 2.8,
     mouseDamping: 0.4,
     windResponse: 0.45,
+    surfaceLightingModel: "standard",
   }),
   cloth: Object.freeze({
     label: "Cloth",
@@ -172,6 +174,7 @@ window.Atoms.materialProperties = Object.freeze({
     mouseStiffness: 2.4,
     mouseDamping: 0.55,
     windResponse: 1,
+    surfaceLightingModel: "cloth",
   }),
   rubber: Object.freeze({
     label: "Rubber",
@@ -185,6 +188,7 @@ window.Atoms.materialProperties = Object.freeze({
     mouseStiffness: 2.2,
     mouseDamping: 0.85,
     windResponse: 0.8,
+    surfaceLightingModel: "standard",
   }),
   gel: Object.freeze({
     label: "Gel",
@@ -198,6 +202,7 @@ window.Atoms.materialProperties = Object.freeze({
     mouseStiffness: 1.4,
     mouseDamping: 1.1,
     windResponse: 0.7,
+    surfaceLightingModel: "standard",
   }),
   heavy: Object.freeze({
     label: "Heavy lattice",
@@ -211,6 +216,7 @@ window.Atoms.materialProperties = Object.freeze({
     mouseStiffness: 4.2,
     mouseDamping: 1.2,
     windResponse: 0.25,
+    surfaceLightingModel: "standard",
   }),
 });
 
@@ -225,6 +231,7 @@ window.Atoms.materialKeys = Object.freeze([
   "mouseStiffness",
   "mouseDamping",
   "windResponse",
+  "surfaceLightingModel",
 ]);
 
 window.Atoms.scenePresets = Object.freeze({
@@ -271,7 +278,7 @@ window.Atoms.scenePresets = Object.freeze({
     gravityStrength: 0.18,
     windProfile: "flag",
     windEnabled: true,
-    windDirection: "z-",
+    windDirection: "x+",
     windStrength: 1.15,
     windTurbulence: 1.05,
     windScale: 260,
@@ -279,6 +286,7 @@ window.Atoms.scenePresets = Object.freeze({
     windDrag: 0.95,
     windFlutter: 1.05,
     physicsMode: "spring",
+    surfaceLightingModel: "cloth",
   }),
   gelCube: Object.freeze({
     label: "Soft gel cube",

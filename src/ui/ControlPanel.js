@@ -61,6 +61,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       flipBackTexture: "flipBackTextureInput",
       surfaceOpacity: "surfaceOpacityInput",
       surfaceLighting: "surfaceLightingInput",
+      surfaceLightingModel: "surfaceLightingModelInput",
       sunAzimuth: "sunAzimuthInput",
       sunElevation: "sunElevationInput",
       sunIntensity: "sunIntensityInput",
@@ -293,6 +294,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.flipBackTexture = document.getElementById(this.ids.flipBackTexture).checked;
     this.config.surfaceOpacity = window.Atoms.readNumber(document.getElementById(this.ids.surfaceOpacity).value, this.config.surfaceOpacity, 0, 1);
     this.config.surfaceLighting = document.getElementById(this.ids.surfaceLighting).checked;
+    this.config.surfaceLightingModel = document.getElementById(this.ids.surfaceLightingModel).value;
     this.config.sunAzimuth = window.Atoms.readNumber(document.getElementById(this.ids.sunAzimuth).value, this.config.sunAzimuth, -180, 180);
     this.config.sunElevation = window.Atoms.readNumber(document.getElementById(this.ids.sunElevation).value, this.config.sunElevation, -80, 80);
     this.config.sunIntensity = window.Atoms.readNumber(document.getElementById(this.ids.sunIntensity).value, this.config.sunIntensity, 0, 2);
