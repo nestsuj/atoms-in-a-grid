@@ -11,6 +11,8 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     this.projectedAtoms = [];
     this.bondEntries = [];
     this.surfaceEntries = [];
+    this.textureLayer = null;
+    this.textureLayerContext = null;
   }
 
   resize(camera) {
@@ -61,9 +63,21 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     }
 
     const depthRange = Math.max(1, maxDepth - minDepth);
-    const surfaceEntries = this.prepareSurfaceEntries(lattice, projectedAtoms);
+    const surfaceEntries = this.prepareSurfaceEntries(lattice, projectedAtoms, basis);
     if (this.config.sortBonds) {
-      surfaceEntries.sort((a, b) => a.depth - b.depth);
+      surfaceEntries.sort((a, b) => {
+        const depthDelta = a.depth - b.depth;
+        if (Math.abs(depthDelta) > 0.000001) {
+          return depthDelta;
+        }
+
+        const facingDelta = a.facingWeight - b.facingWeight;
+        if (Math.abs(facingDelta) > 0.000001) {
+          return facingDelta;
+        }
+
+        return a.index - b.index;
+      });
     }
 
     if (!webglSurfaces) {
@@ -149,9 +163,10 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     return this.bondEntries;
   }
 
-  prepareSurfaceEntries(lattice, projectedAtoms) {
+  prepareSurfaceEntries(lattice, projectedAtoms, basis) {
     const panels = lattice.surfacePanels || [];
     const surfaceSide = this.config.surfaceSide || "both";
+    const coincidentSheetSide = this.coincidentSheetSide(lattice, surfaceSide, basis);
     let entryIndex = 0;
 
     for (let i = 0; i < panels.length; i += 1) {
@@ -161,10 +176,14 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
         continue;
       }
 
+      if (coincidentSheetSide && panel.side !== coincidentSheetSide) {
+        continue;
+      }
+
       let entry = this.surfaceEntries[entryIndex];
 
       if (!entry) {
-        entry = { panel: null, a: null, b: null, c: null, d: null, depth: 0 };
+        entry = { panel: null, a: null, b: null, c: null, d: null, depth: 0, index: 0, facingWeight: 0, opaqueSurface: false };
         this.surfaceEntries[entryIndex] = entry;
       }
 
@@ -174,11 +193,22 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       entry.c = projectedAtoms[panel.c.id].screen;
       entry.d = projectedAtoms[panel.d.id].screen;
       entry.depth = (entry.a.depth + entry.b.depth + entry.c.depth + entry.d.depth) * 0.25;
+      entry.index = i;
+      entry.facingWeight = 0;
+      entry.opaqueSurface = lattice.depth === 1;
       entryIndex += 1;
     }
 
     this.surfaceEntries.length = entryIndex;
     return this.surfaceEntries;
+  }
+
+  coincidentSheetSide(lattice, surfaceSide, basis) {
+    if (lattice.depth !== 1 || surfaceSide !== "both") {
+      return null;
+    }
+
+    return basis.forward.z >= 0 ? "front" : "back";
   }
 
   drawBackground(ctx, width, height) {
@@ -209,10 +239,25 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
 
     ctx.save();
     ctx.lineJoin = "round";
+    let texturedBatch = [];
 
     for (const entry of surfaceEntries) {
       const depthShade = (entry.depth - minDepth) / depthRange;
+      if (this.isTexturedSurfaceEntry(entry)) {
+        texturedBatch.push(entry);
+        continue;
+      }
+
+      if (texturedBatch.length > 0) {
+        this.drawTexturedSurfaceBatch(ctx, texturedBatch);
+        texturedBatch = [];
+      }
+
       this.drawSurfacePanel(ctx, entry, depthShade);
+    }
+
+    if (texturedBatch.length > 0) {
+      this.drawTexturedSurfaceBatch(ctx, texturedBatch);
     }
 
     ctx.restore();
@@ -220,15 +265,15 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
 
   drawSurfacePanel(ctx, entry, depthShade) {
     const opacity = window.Atoms.clamp(this.config.surfaceOpacity, 0, 1);
-    const light = (0.65 + depthShade * 0.35) * this.surfaceLight(entry);
     const image = this.surfaceTextureForSide(entry.panel.side);
 
     if (this.config.surfaceStyle === "image" && image) {
-      this.drawTexturedSurfacePanel(ctx, entry, image, opacity, light);
+      this.drawTexturedSurfaceBatch(ctx, [entry]);
       return;
     }
 
-    const fillAlpha = opacity * (0.34 + depthShade * 0.16);
+    const light = (0.65 + depthShade * 0.35) * this.surfaceLight(entry);
+    const fillAlpha = entry.opaqueSurface ? 1 : opacity * (0.34 + depthShade * 0.16);
     const strokeAlpha = opacity * 0.45;
     const color = this.surfaceColor(entry.panel, light);
 
@@ -244,25 +289,79 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     }
   }
 
+  isTexturedSurfaceEntry(entry) {
+    return this.config.surfaceStyle === "image" && Boolean(this.surfaceTextureForSide(entry.panel.side));
+  }
+
   surfaceTextureForSide(side) {
     if (side === "back") {
-      return this.config.surfaceBackTextureImage;
+      return this.config.surfaceBackTextureImage || this.config.surfaceFrontTextureImage || this.config.surfaceTextureImage;
     }
 
     return this.config.surfaceFrontTextureImage || this.config.surfaceTextureImage;
   }
 
-  drawTexturedSurfacePanel(ctx, entry, image, opacity, light) {
+  drawTexturedSurfaceBatch(ctx, entries) {
+    const layer = this.ensureTextureLayer();
+    const layerContext = this.textureLayerContext;
+    const width = this.canvas.width / this.pixelRatio;
+    const height = this.canvas.height / this.pixelRatio;
+
+    layerContext.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
+    layerContext.clearRect(0, 0, width, height);
+    layerContext.imageSmoothingEnabled = true;
+
+    for (const entry of entries) {
+      const image = this.surfaceTextureForSide(entry.panel.side);
+      if (image) {
+        this.drawTexturedSurfacePanel(layerContext, entry, image, this.surfaceSeamOverlap());
+      }
+    }
+
+    ctx.save();
+    ctx.globalAlpha *= this.effectiveTexturedSurfaceOpacity();
+    ctx.drawImage(layer, 0, 0, width, height);
+    ctx.restore();
+
+    if (this.config.showSurfaceEdges) {
+      ctx.save();
+      for (const entry of entries) {
+        this.traceSurfacePanel(ctx, entry, 0);
+        ctx.lineWidth = 0.55;
+        ctx.strokeStyle = `rgba(230, 246, 250, ${(this.config.surfaceOpacity * 0.22).toFixed(3)})`;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  ensureTextureLayer() {
+    if (!this.textureLayer) {
+      this.textureLayer = document.createElement("canvas");
+      this.textureLayerContext = this.textureLayer.getContext("2d");
+    }
+
+    if (this.textureLayer.width !== this.canvas.width || this.textureLayer.height !== this.canvas.height) {
+      this.textureLayer.width = this.canvas.width;
+      this.textureLayer.height = this.canvas.height;
+    }
+
+    return this.textureLayer;
+  }
+
+  effectiveTexturedSurfaceOpacity() {
+    return 1;
+  }
+
+  drawTexturedSurfacePanel(ctx, entry, image, seamOverlap) {
     const panel = entry.panel;
     const source = this.texturedSourceRect(panel, image);
     const sx0 = source.u0 * image.naturalWidth;
     const sy0 = source.v0 * image.naturalHeight;
     const sx1 = source.u1 * image.naturalWidth;
     const sy1 = source.v1 * image.naturalHeight;
-    const seamOverlap = this.surfaceSeamOverlap();
 
     ctx.save();
-    ctx.globalAlpha *= opacity;
     this.drawImageTriangle(
       ctx,
       image,
@@ -286,16 +385,6 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       seamOverlap,
     );
     ctx.restore();
-    this.drawSurfaceLightingOverlay(ctx, entry, opacity, light);
-
-    if (this.config.showSurfaceEdges) {
-      ctx.save();
-      this.traceSurfacePanel(ctx, entry, 0);
-      ctx.lineWidth = 0.55;
-      ctx.strokeStyle = `rgba(230, 246, 250, ${(opacity * 0.22).toFixed(3)})`;
-      ctx.stroke();
-      ctx.restore();
-    }
   }
 
   texturedSourceRect(panel, image) {

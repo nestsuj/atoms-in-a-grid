@@ -252,63 +252,18 @@ window.Atoms.VerletSolver = class VerletSolver {
   }
 
   applySurfaceWind(lattice, time) {
-    const zMax = lattice.depth - 1;
-    const yMax = lattice.height - 1;
-    const xMax = lattice.width - 1;
+    const panels = lattice.surfacePanels || [];
 
-    for (let z = 0; z < lattice.depth; z += Math.max(1, zMax)) {
-      for (let y = 0; y < yMax; y += 1) {
-        for (let x = 0; x < xMax; x += 1) {
-          this.applyWindQuad(
-            lattice,
-            time,
-            lattice.atomAt(x, y, z),
-            lattice.atomAt(x + 1, y, z),
-            lattice.atomAt(x + 1, y + 1, z),
-            lattice.atomAt(x, y + 1, z),
-          );
-        }
-      }
-
-      if (zMax === 0) break;
-    }
-
-    if (lattice.depth <= 1) {
+    if (panels.length === 0) {
       return;
     }
 
-    for (let y = 0; y < lattice.height; y += Math.max(1, yMax)) {
-      for (let z = 0; z < zMax; z += 1) {
-        for (let x = 0; x < xMax; x += 1) {
-          this.applyWindQuad(
-            lattice,
-            time,
-            lattice.atomAt(x, y, z),
-            lattice.atomAt(x, y, z + 1),
-            lattice.atomAt(x + 1, y, z + 1),
-            lattice.atomAt(x + 1, y, z),
-          );
-        }
+    for (const panel of panels) {
+      if (lattice.depth === 1 && panel.side === "back") {
+        continue;
       }
 
-      if (yMax === 0) break;
-    }
-
-    for (let x = 0; x < lattice.width; x += Math.max(1, xMax)) {
-      for (let y = 0; y < yMax; y += 1) {
-        for (let z = 0; z < zMax; z += 1) {
-          this.applyWindQuad(
-            lattice,
-            time,
-            lattice.atomAt(x, y, z),
-            lattice.atomAt(x, y + 1, z),
-            lattice.atomAt(x, y + 1, z + 1),
-            lattice.atomAt(x, y, z + 1),
-          );
-        }
-      }
-
-      if (xMax === 0) break;
+      this.applyWindQuad(lattice, time, panel.a, panel.b, panel.c, panel.d);
     }
   }
 
@@ -403,16 +358,18 @@ window.Atoms.VerletSolver = class VerletSolver {
       z: relative.z - normal.z * normalSpeed,
     };
     const tangentSpeed = Math.hypot(tangent.x, tangent.y, tangent.z);
+    const relativeSpeed = Math.max(0.0001, Math.hypot(relative.x, relative.y, relative.z));
+    const projectedExposure = Math.abs(normalSpeed) / relativeSpeed;
     const areaScale = doubleArea / (2 * lattice.restLength * lattice.restLength);
     const pressure = normalSpeed * Math.abs(normalSpeed) * (0.65 + this.windDrag * 0.7) * this.windResponse * areaScale;
     const skin = this.windDrag * this.windResponse * 0.01 * areaScale;
     const flutter = this.sampleFlutter(centroid, time);
-    const tangentialLift = tangentSpeed * tangentSpeed * flutter * this.windResponse * 0.18 * areaScale;
+    const flutterLift = tangentSpeed * tangentSpeed * flutter * this.windResponse * (0.08 + (1 - projectedExposure) * 0.14) * areaScale;
 
     return {
-      x: normal.x * (pressure + tangentialLift) + tangent.x * skin,
-      y: normal.y * (pressure + tangentialLift) + tangent.y * skin,
-      z: normal.z * (pressure + tangentialLift) + tangent.z * skin,
+      x: normal.x * (pressure + flutterLift) + tangent.x * skin,
+      y: normal.y * (pressure + flutterLift) + tangent.y * skin,
+      z: normal.z * (pressure + flutterLift) + tangent.z * skin,
     };
   }
 
@@ -703,6 +660,8 @@ window.Atoms.VerletSolver = class VerletSolver {
         }
       }
     }
+
+    this.solveClothSelfCollisions(lattice, collisionRadius);
   }
 
   buildCollisionBuckets(lattice, cellSize) {
@@ -782,6 +741,186 @@ window.Atoms.VerletSolver = class VerletSolver {
       b.position.y += normalY * overlap;
       b.position.z += normalZ * overlap;
     }
+  }
+
+  solveClothSelfCollisions(lattice, collisionRadius) {
+    if (lattice.depth !== 1 || !lattice.surfacePanels || lattice.surfacePanels.length === 0) {
+      return;
+    }
+
+    const panels = lattice.surfacePanels.filter((panel) => panel.side === "front");
+    if (panels.length === 0) {
+      return;
+    }
+
+    const thickness = Math.max(0.001, collisionRadius * 0.85);
+
+    for (const panel of panels) {
+      this.solveClothTriangleCollisions(lattice, panel.a, panel.b, panel.c, thickness);
+      this.solveClothTriangleCollisions(lattice, panel.a, panel.c, panel.d, thickness);
+    }
+  }
+
+  solveClothTriangleCollisions(lattice, a, b, c, thickness) {
+    const normal = this.triangleUnitNormal(a.position, b.position, c.position);
+
+    if (normal.length < 0.000001) {
+      return;
+    }
+
+    for (const atom of lattice.atoms) {
+      if (this.isLocalClothCollision(atom, a, b, c)) {
+        continue;
+      }
+
+      this.solveVertexTriangleCollision(atom, a, b, c, normal, thickness);
+    }
+  }
+
+  triangleUnitNormal(a, b, c) {
+    const abX = b.x - a.x;
+    const abY = b.y - a.y;
+    const abZ = b.z - a.z;
+    const acX = c.x - a.x;
+    const acY = c.y - a.y;
+    const acZ = c.z - a.z;
+    const nx = abY * acZ - abZ * acY;
+    const ny = abZ * acX - abX * acZ;
+    const nz = abX * acY - abY * acX;
+    const length = Math.hypot(nx, ny, nz);
+
+    if (length < 0.000001) {
+      return { x: 0, y: 0, z: 0, length: 0 };
+    }
+
+    return { x: nx / length, y: ny / length, z: nz / length, length };
+  }
+
+  isLocalClothCollision(atom, a, b, c) {
+    if (atom.id === a.id || atom.id === b.id || atom.id === c.id) {
+      return true;
+    }
+
+    const minX = Math.min(a.gridX, b.gridX, c.gridX) - 1;
+    const maxX = Math.max(a.gridX, b.gridX, c.gridX) + 1;
+    const minY = Math.min(a.gridY, b.gridY, c.gridY) - 1;
+    const maxY = Math.max(a.gridY, b.gridY, c.gridY) + 1;
+
+    return atom.gridZ === a.gridZ
+      && atom.gridX >= minX
+      && atom.gridX <= maxX
+      && atom.gridY >= minY
+      && atom.gridY <= maxY;
+  }
+
+  solveVertexTriangleCollision(atom, a, b, c, normal, thickness) {
+    const point = atom.position;
+    const signedDistance = (
+      (point.x - a.position.x) * normal.x +
+      (point.y - a.position.y) * normal.y +
+      (point.z - a.position.z) * normal.z
+    );
+    const previousSignedDistance = (
+      (atom.previousPosition.x - a.position.x) * normal.x +
+      (atom.previousPosition.y - a.position.y) * normal.y +
+      (atom.previousPosition.z - a.position.z) * normal.z
+    );
+
+    if (Math.abs(signedDistance) >= thickness && signedDistance * previousSignedDistance > 0) {
+      return;
+    }
+
+    const projected = {
+      x: point.x - normal.x * signedDistance,
+      y: point.y - normal.y * signedDistance,
+      z: point.z - normal.z * signedDistance,
+    };
+    const bary = this.triangleBarycentric(projected, a.position, b.position, c.position);
+
+    if (!bary || bary.u < -0.035 || bary.v < -0.035 || bary.w < -0.035) {
+      return;
+    }
+
+    const side = signedDistance >= 0 ? 1 : -1;
+    const targetDistance = thickness * side;
+    const correction = (targetDistance - signedDistance) * this.collisionStiffness;
+
+    if (Math.abs(correction) <= 0.000001) {
+      return;
+    }
+
+    this.applyVertexTriangleCorrection(atom, a, b, c, bary, normal, correction);
+  }
+
+  triangleBarycentric(point, a, b, c) {
+    const v0x = b.x - a.x;
+    const v0y = b.y - a.y;
+    const v0z = b.z - a.z;
+    const v1x = c.x - a.x;
+    const v1y = c.y - a.y;
+    const v1z = c.z - a.z;
+    const v2x = point.x - a.x;
+    const v2y = point.y - a.y;
+    const v2z = point.z - a.z;
+    const d00 = v0x * v0x + v0y * v0y + v0z * v0z;
+    const d01 = v0x * v1x + v0y * v1y + v0z * v1z;
+    const d11 = v1x * v1x + v1y * v1y + v1z * v1z;
+    const d20 = v2x * v0x + v2y * v0y + v2z * v0z;
+    const d21 = v2x * v1x + v2y * v1y + v2z * v1z;
+    const denominator = d00 * d11 - d01 * d01;
+
+    if (Math.abs(denominator) < 0.000001) {
+      return null;
+    }
+
+    const v = (d11 * d20 - d01 * d21) / denominator;
+    const w = (d00 * d21 - d01 * d20) / denominator;
+    const u = 1 - v - w;
+    return { u, v, w };
+  }
+
+  applyVertexTriangleCorrection(atom, a, b, c, bary, normal, correction) {
+    const atomLocked = atom.fixed || this.isHardPinned(atom);
+    const weights = [
+      { atom: a, weight: bary.u },
+      { atom: b, weight: bary.v },
+      { atom: c, weight: bary.w },
+    ];
+    const movableTriangleWeight = weights.reduce((total, entry) => (
+      entry.atom.fixed || this.isHardPinned(entry.atom) ? total : total + Math.max(0, entry.weight)
+    ), 0);
+
+    if (atomLocked && movableTriangleWeight <= 0) {
+      return;
+    }
+
+    const atomShare = atomLocked ? 0 : (movableTriangleWeight > 0 ? 0.55 : 1);
+    const triangleShare = 1 - atomShare;
+    const correctionLength = Math.abs(correction);
+
+    if (!atomLocked) {
+      atom.position.x += normal.x * correction * atomShare;
+      atom.position.y += normal.y * correction * atomShare;
+      atom.position.z += normal.z * correction * atomShare;
+      this.collisionStats.activeAtoms.add(atom.id);
+    }
+
+    if (movableTriangleWeight > 0 && triangleShare > 0) {
+      for (const entry of weights) {
+        if (entry.atom.fixed || this.isHardPinned(entry.atom)) {
+          continue;
+        }
+
+        const share = triangleShare * Math.max(0, entry.weight) / movableTriangleWeight;
+        entry.atom.position.x -= normal.x * correction * share;
+        entry.atom.position.y -= normal.y * correction * share;
+        entry.atom.position.z -= normal.z * correction * share;
+        this.collisionStats.activeAtoms.add(entry.atom.id);
+      }
+    }
+
+    this.collisionStats.corrections += 1;
+    this.collisionStats.maxCorrection = Math.max(this.collisionStats.maxCorrection, correctionLength);
   }
 
   collisionExcludedPairs(lattice) {

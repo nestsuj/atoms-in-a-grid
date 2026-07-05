@@ -65,6 +65,10 @@ window.Atoms.defaultConfig = Object.freeze({
   surfaceOpacity: 0.22,
   surfaceLighting: true,
   surfaceLightingModel: "standard",
+  surfaceFabricEnabled: false,
+  fabricWeaveStrength: 0,
+  surfaceFoldShadingEnabled: false,
+  foldShadingStrength: 0,
   sunAzimuth: 35,
   sunElevation: 35,
   sunIntensity: 0.75,
@@ -161,6 +165,10 @@ window.Atoms.materialProperties = Object.freeze({
     mouseDamping: 0.4,
     windResponse: 0.45,
     surfaceLightingModel: "standard",
+    surfaceFabricEnabled: false,
+    fabricWeaveStrength: 0,
+    surfaceFoldShadingEnabled: false,
+    foldShadingStrength: 0,
   }),
   cloth: Object.freeze({
     label: "Cloth",
@@ -175,6 +183,10 @@ window.Atoms.materialProperties = Object.freeze({
     mouseDamping: 0.55,
     windResponse: 1,
     surfaceLightingModel: "cloth",
+    surfaceFabricEnabled: true,
+    fabricWeaveStrength: 0.08,
+    surfaceFoldShadingEnabled: true,
+    foldShadingStrength: 0.08,
   }),
   rubber: Object.freeze({
     label: "Rubber",
@@ -189,6 +201,10 @@ window.Atoms.materialProperties = Object.freeze({
     mouseDamping: 0.85,
     windResponse: 0.8,
     surfaceLightingModel: "standard",
+    surfaceFabricEnabled: false,
+    fabricWeaveStrength: 0,
+    surfaceFoldShadingEnabled: false,
+    foldShadingStrength: 0,
   }),
   gel: Object.freeze({
     label: "Gel",
@@ -203,6 +219,10 @@ window.Atoms.materialProperties = Object.freeze({
     mouseDamping: 1.1,
     windResponse: 0.7,
     surfaceLightingModel: "standard",
+    surfaceFabricEnabled: false,
+    fabricWeaveStrength: 0,
+    surfaceFoldShadingEnabled: false,
+    foldShadingStrength: 0,
   }),
   heavy: Object.freeze({
     label: "Heavy lattice",
@@ -217,6 +237,10 @@ window.Atoms.materialProperties = Object.freeze({
     mouseDamping: 1.2,
     windResponse: 0.25,
     surfaceLightingModel: "standard",
+    surfaceFabricEnabled: false,
+    fabricWeaveStrength: 0,
+    surfaceFoldShadingEnabled: false,
+    foldShadingStrength: 0,
   }),
 });
 
@@ -232,6 +256,10 @@ window.Atoms.materialKeys = Object.freeze([
   "mouseDamping",
   "windResponse",
   "surfaceLightingModel",
+  "surfaceFabricEnabled",
+  "fabricWeaveStrength",
+  "surfaceFoldShadingEnabled",
+  "foldShadingStrength",
 ]);
 
 window.Atoms.scenePresets = Object.freeze({
@@ -260,6 +288,10 @@ window.Atoms.scenePresets = Object.freeze({
     windDrag: 0.45,
     windFlutter: 0.3,
     physicsMode: "spring",
+    showAtoms: true,
+    showBonds: true,
+    showSurfaces: false,
+    surfaceRenderer: "webgl",
   }),
   flag: Object.freeze({
     label: "Flag / cloth",
@@ -286,7 +318,15 @@ window.Atoms.scenePresets = Object.freeze({
     windDrag: 0.95,
     windFlutter: 1.05,
     physicsMode: "spring",
+    showAtoms: false,
+    showBonds: false,
+    showSurfaces: true,
+    surfaceRenderer: "webgl",
     surfaceLightingModel: "cloth",
+    surfaceFabricEnabled: true,
+    fabricWeaveStrength: 0.08,
+    surfaceFoldShadingEnabled: true,
+    foldShadingStrength: 0.08,
   }),
   gelCube: Object.freeze({
     label: "Soft gel cube",
@@ -313,6 +353,10 @@ window.Atoms.scenePresets = Object.freeze({
     windDrag: 0.55,
     windFlutter: 0.35,
     physicsMode: "spring",
+    showAtoms: true,
+    showBonds: true,
+    showSurfaces: false,
+    surfaceRenderer: "webgl",
   }),
   heavyLattice: Object.freeze({
     label: "Heavy lattice",
@@ -339,6 +383,10 @@ window.Atoms.scenePresets = Object.freeze({
     windDrag: 0.35,
     windFlutter: 0.25,
     physicsMode: "spring",
+    showAtoms: true,
+    showBonds: true,
+    showSurfaces: false,
+    surfaceRenderer: "webgl",
   }),
 });
 
@@ -366,6 +414,10 @@ window.Atoms.scenePresetKeys = Object.freeze([
   "windDrag",
   "windFlutter",
   "physicsMode",
+  "showAtoms",
+  "showBonds",
+  "showSurfaces",
+  "surfaceRenderer",
 ]);
 
 window.Atoms.clamp = function clamp(value, min, max) {

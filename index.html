@@ -359,12 +359,15 @@
             Front image
             <input id="surfaceTextureInput" type="file" accept="image/*">
             <span>Local image mapped across the front side of a depth 1 surface. Nothing is uploaded.</span>
+            <small id="surfaceTextureName">No front image loaded</small>
           </label>
           <label>
             Back image
             <input id="surfaceBackTextureInput" type="file" accept="image/*">
             <span>Optional local image mapped across the back side. If empty, the back uses procedural color.</span>
+            <small id="surfaceBackTextureName">No back image loaded</small>
           </label>
+          <button id="clearSurfaceImagesButton" type="button">Clear surface images</button>
           <label class="checkbox-control">
             <input id="mirrorBackTextureInput" type="checkbox">
             <span class="checkbox-text">
@@ -398,6 +401,30 @@
               <option value="cloth">Cloth</option>
             </select>
             <span>Cloth softens contrast and adds gentle two-sided backlighting for thin fabric.</span>
+          </label>
+          <label class="checkbox-control">
+            <input id="surfaceFabricEnabledInput" type="checkbox">
+            <span class="checkbox-text">
+              Fabric weave
+              <small>Adds a very subtle procedural thread pattern to surfaces.</small>
+            </span>
+          </label>
+          <label>
+            Weave strength
+            <input id="fabricWeaveStrengthInput" type="range" min="0" max="0.25" step="0.01">
+            <span>How visible the procedural fabric weave is. Low values keep images and colors clean.</span>
+          </label>
+          <label class="checkbox-control">
+            <input id="surfaceFoldShadingEnabledInput" type="checkbox">
+            <span class="checkbox-text">
+              Fold shading
+              <small>Gently darkens high-curvature folds so cloth has more depth.</small>
+            </span>
+          </label>
+          <label>
+            Fold strength
+            <input id="foldShadingStrengthInput" type="range" min="0" max="0.5" step="0.01">
+            <span>How strongly bends and creases affect surface brightness.</span>
           </label>
           <label>
             Sun azimuth
@@ -481,26 +508,26 @@
     </aside>
   </main>
 
-  <script src="./src/config.js?v=20260705p"></script>
-  <script src="./src/math/vec3.js?v=20260705p"></script>
-  <script src="./src/math/camera.js?v=20260705p"></script>
-  <script src="./src/math/projection.js?v=20260705p"></script>
-  <script src="./src/simulation/Atom.js?v=20260705p"></script>
-  <script src="./src/simulation/Bond.js?v=20260705p"></script>
-  <script src="./src/simulation/BendingConstraint.js?v=20260705p"></script>
-  <script src="./src/simulation/Lattice.js?v=20260705p"></script>
-  <script src="./src/simulation/WindField.js?v=20260705p"></script>
-  <script src="./src/simulation/VerletSolver.js?v=20260705p"></script>
-  <script src="./src/simulation/EnergyModel.js?v=20260705p"></script>
-  <script src="./src/simulation/Diagnostics.js?v=20260705p"></script>
-  <script src="./src/rendering/DrawStyle.js?v=20260705p"></script>
-  <script src="./src/rendering/WebGLSurfaceRenderer.js?v=20260705p"></script>
-  <script src="./src/rendering/CanvasRenderer.js?v=20260705p"></script>
-  <script src="./src/input/PointerController.js?v=20260705p"></script>
-  <script src="./src/input/OrbitController.js?v=20260705p"></script>
-  <script src="./src/input/DragController.js?v=20260705p"></script>
-  <script src="./src/input/PinEditController.js?v=20260705p"></script>
-  <script src="./src/ui/ControlPanel.js?v=20260705p"></script>
-  <script src="./src/main.js?v=20260705p"></script>
+  <script src="./src/config.js?v=20260705aa"></script>
+  <script src="./src/math/vec3.js?v=20260705aa"></script>
+  <script src="./src/math/camera.js?v=20260705aa"></script>
+  <script src="./src/math/projection.js?v=20260705aa"></script>
+  <script src="./src/simulation/Atom.js?v=20260705aa"></script>
+  <script src="./src/simulation/Bond.js?v=20260705aa"></script>
+  <script src="./src/simulation/BendingConstraint.js?v=20260705aa"></script>
+  <script src="./src/simulation/Lattice.js?v=20260705aa"></script>
+  <script src="./src/simulation/WindField.js?v=20260705aa"></script>
+  <script src="./src/simulation/VerletSolver.js?v=20260705aa"></script>
+  <script src="./src/simulation/EnergyModel.js?v=20260705aa"></script>
+  <script src="./src/simulation/Diagnostics.js?v=20260705aa"></script>
+  <script src="./src/rendering/DrawStyle.js?v=20260705aa"></script>
+  <script src="./src/rendering/WebGLSurfaceRenderer.js?v=20260705aa"></script>
+  <script src="./src/rendering/CanvasRenderer.js?v=20260705aa"></script>
+  <script src="./src/input/PointerController.js?v=20260705aa"></script>
+  <script src="./src/input/OrbitController.js?v=20260705aa"></script>
+  <script src="./src/input/DragController.js?v=20260705aa"></script>
+  <script src="./src/input/PinEditController.js?v=20260705aa"></script>
+  <script src="./src/ui/ControlPanel.js?v=20260705aa"></script>
+  <script src="./src/main.js?v=20260705aa"></script>
 </body>
 </html>

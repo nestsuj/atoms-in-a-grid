@@ -14,6 +14,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     this.uvs = [];
     this.colors = [];
     this.textureSides = [];
+    this.curvatures = [];
     this.edgePositions = [];
     this.edgeColors = [];
     this.bondPositions = [];
@@ -51,12 +52,20 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
       uv: gl.getAttribLocation(this.program, "a_uv"),
       color: gl.getAttribLocation(this.program, "a_color"),
       textureSide: gl.getAttribLocation(this.program, "a_textureSide"),
+      curvature: gl.getAttribLocation(this.program, "a_curvature"),
       matrix: gl.getUniformLocation(this.program, "u_matrix"),
       sunDirection: gl.getUniformLocation(this.program, "u_sunDirection"),
       ambient: gl.getUniformLocation(this.program, "u_ambient"),
       intensity: gl.getUniformLocation(this.program, "u_intensity"),
       lightingModel: gl.getUniformLocation(this.program, "u_lightingModel"),
+      fabricEnabled: gl.getUniformLocation(this.program, "u_fabricEnabled"),
+      weaveStrength: gl.getUniformLocation(this.program, "u_weaveStrength"),
+      foldShadingEnabled: gl.getUniformLocation(this.program, "u_foldShadingEnabled"),
+      foldShadingStrength: gl.getUniformLocation(this.program, "u_foldShadingStrength"),
       opacity: gl.getUniformLocation(this.program, "u_opacity"),
+      twoSidedSheet: gl.getUniformLocation(this.program, "u_twoSidedSheet"),
+      mirrorBackTexture: gl.getUniformLocation(this.program, "u_mirrorBackTexture"),
+      flipBackTexture: gl.getUniformLocation(this.program, "u_flipBackTexture"),
       useFrontTexture: gl.getUniformLocation(this.program, "u_useFrontTexture"),
       useBackTexture: gl.getUniformLocation(this.program, "u_useBackTexture"),
       frontTexture: gl.getUniformLocation(this.program, "u_frontTexture"),
@@ -93,6 +102,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     this.uvBuffer = gl.createBuffer();
     this.colorBuffer = gl.createBuffer();
     this.textureSideBuffer = gl.createBuffer();
+    this.curvatureBuffer = gl.createBuffer();
     this.edgeBuffer = gl.createBuffer();
     this.edgeColorBuffer = gl.createBuffer();
     this.bondBuffer = gl.createBuffer();
@@ -175,6 +185,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     this.bindAttribute(this.uvBuffer, this.uvs, this.locations.uv, 2);
     this.bindAttribute(this.colorBuffer, this.colors, this.locations.color, 3);
     this.bindAttribute(this.textureSideBuffer, this.textureSides, this.locations.textureSide, 1);
+    this.bindAttribute(this.curvatureBuffer, this.curvatures, this.locations.curvature, 1);
 
     const sun = this.sunDirection();
     gl.uniformMatrix4fv(this.locations.matrix, false, this.cameraMatrix(camera));
@@ -182,7 +193,16 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     gl.uniform1f(this.locations.ambient, this.config.surfaceLighting ? window.Atoms.clamp(this.config.sunAmbient, 0, 1) : 1);
     gl.uniform1f(this.locations.intensity, this.config.surfaceLighting ? window.Atoms.clamp(this.config.sunIntensity, 0, 2) : 0);
     gl.uniform1i(this.locations.lightingModel, this.config.surfaceLightingModel === "cloth" ? 1 : 0);
-    gl.uniform1f(this.locations.opacity, window.Atoms.clamp(this.config.surfaceOpacity, 0, 1));
+    gl.uniform1i(this.locations.fabricEnabled, this.config.surfaceFabricEnabled ? 1 : 0);
+    gl.uniform1f(this.locations.weaveStrength, window.Atoms.clamp(this.config.fabricWeaveStrength, 0, 0.25));
+    gl.uniform1i(this.locations.foldShadingEnabled, this.config.surfaceFoldShadingEnabled ? 1 : 0);
+    gl.uniform1f(this.locations.foldShadingStrength, window.Atoms.clamp(this.config.foldShadingStrength, 0, 0.5));
+    const surfaceOpacity = this.effectiveSurfaceOpacity();
+    const opaqueSurface = surfaceOpacity >= 0.999;
+    gl.uniform1f(this.locations.opacity, surfaceOpacity);
+    gl.uniform1i(this.locations.twoSidedSheet, this.twoSidedSheet ? 1 : 0);
+    gl.uniform1i(this.locations.mirrorBackTexture, this.config.mirrorBackTexture ? 1 : 0);
+    gl.uniform1i(this.locations.flipBackTexture, this.config.flipBackTexture ? 1 : 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.frontTexture || this.whiteTexture);
     gl.uniform1i(this.locations.frontTexture, 0);
@@ -191,10 +211,18 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     gl.uniform1i(this.locations.backTexture, 1);
     gl.uniform1i(this.locations.useFrontTexture, this.hasFrontTexture() ? 1 : 0);
     gl.uniform1i(this.locations.useBackTexture, this.hasBackTexture() ? 1 : 0);
+    if (opaqueSurface) {
+      gl.disable(gl.BLEND);
+    } else {
+      gl.enable(gl.BLEND);
+    }
+
+    gl.depthMask(true);
     gl.enable(gl.POLYGON_OFFSET_FILL);
     gl.polygonOffset(1, 1);
     gl.drawArrays(gl.TRIANGLES, 0, count);
     gl.disable(gl.POLYGON_OFFSET_FILL);
+    gl.enable(gl.BLEND);
 
     if (this.config.showSurfaceEdges) {
       this.drawSurfaceEdges(this.lastPanels || [], camera);
@@ -207,14 +235,17 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     this.uvs.length = 0;
     this.colors.length = 0;
     this.textureSides.length = 0;
+    this.curvatures.length = 0;
 
-    const panels = this.filteredPanels(lattice.surfacePanels || []);
+    this.twoSidedSheet = lattice.depth === 1 && (this.config.surfaceSide || "both") === "both";
+    const panels = this.filteredPanels(lattice);
     this.lastPanels = panels;
     const atomNormals = this.sideAwareAtomNormals(lattice, panels);
+    const atomCurvatures = this.sideAwareAtomCurvatures(lattice, panels, atomNormals);
 
     for (const panel of panels) {
-      this.pushTriangle(panel, panel.a, panel.b, panel.c, atomNormals);
-      this.pushTriangle(panel, panel.a, panel.c, panel.d, atomNormals);
+      this.pushTriangle(panel, panel.a, panel.b, panel.c, atomNormals, atomCurvatures);
+      this.pushTriangle(panel, panel.a, panel.c, panel.d, atomNormals, atomCurvatures);
     }
 
     return this.positions.length / 3;
@@ -394,9 +425,14 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     return this.atomPositions.length / 3;
   }
 
-  filteredPanels(panels) {
+  filteredPanels(lattice) {
+    const panels = lattice.surfacePanels || [];
     const side = this.config.surfaceSide || "both";
     return panels.filter((panel) => {
+      if (lattice.depth === 1 && side === "both" && panel.side === "back") {
+        return false;
+      }
+
       if (side !== "both" && panel.side !== side) {
         return false;
       }
@@ -463,10 +499,53 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     });
   }
 
-  pushTriangle(panel, a, b, c, atomNormals) {
-    this.pushVertex(panel, a, this.normalForPanelAtom(panel, a, atomNormals));
-    this.pushVertex(panel, b, this.normalForPanelAtom(panel, b, atomNormals));
-    this.pushVertex(panel, c, this.normalForPanelAtom(panel, c, atomNormals));
+  sideAwareAtomCurvatures(lattice, panels, atomNormals) {
+    const curvaturesBySide = new Map();
+    const fallback = Array.from({ length: lattice.atoms.length }, () => ({ total: 0, count: 0 }));
+
+    for (const panel of panels) {
+      const panelNormal = this.panelNormal(panel);
+      let sideCurvatures = curvaturesBySide.get(panel.side);
+
+      if (!sideCurvatures) {
+        sideCurvatures = Array.from({ length: lattice.atoms.length }, () => ({ total: 0, count: 0 }));
+        curvaturesBySide.set(panel.side, sideCurvatures);
+      }
+
+      for (const atom of [panel.a, panel.b, panel.c, panel.d]) {
+        const normal = this.normalForPanelAtom(panel, atom, atomNormals);
+        const curvature = this.vertexCurvature(normal, panelNormal);
+        sideCurvatures[atom.id].total += curvature;
+        sideCurvatures[atom.id].count += 1;
+        fallback[atom.id].total += curvature;
+        fallback[atom.id].count += 1;
+      }
+    }
+
+    const normalizedFallback = this.normalizeAtomCurvatures(fallback);
+    const normalizedBySide = new Map();
+
+    for (const [side, curvatures] of curvaturesBySide.entries()) {
+      normalizedBySide.set(side, this.normalizeAtomCurvatures(curvatures, normalizedFallback));
+    }
+
+    return normalizedBySide;
+  }
+
+  normalizeAtomCurvatures(curvatures, fallbackCurvatures) {
+    return curvatures.map((curvature, index) => {
+      if (curvature.count <= 0) {
+        return fallbackCurvatures ? fallbackCurvatures[index] : 0;
+      }
+
+      return window.Atoms.clamp(curvature.total / curvature.count, 0, 1);
+    });
+  }
+
+  pushTriangle(panel, a, b, c, atomNormals, atomCurvatures) {
+    this.pushVertex(panel, a, this.normalForPanelAtom(panel, a, atomNormals), this.curvatureForPanelAtom(panel, a, atomCurvatures));
+    this.pushVertex(panel, b, this.normalForPanelAtom(panel, b, atomNormals), this.curvatureForPanelAtom(panel, b, atomCurvatures));
+    this.pushVertex(panel, c, this.normalForPanelAtom(panel, c, atomNormals), this.curvatureForPanelAtom(panel, c, atomCurvatures));
   }
 
   normalForPanelAtom(panel, atom, atomNormals) {
@@ -479,7 +558,17 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     return this.panelNormal(panel);
   }
 
-  pushVertex(panel, atom, normal) {
+  curvatureForPanelAtom(panel, atom, atomCurvatures) {
+    const sideCurvatures = atomCurvatures.get(panel.side);
+
+    if (sideCurvatures && sideCurvatures[atom.id] !== undefined) {
+      return sideCurvatures[atom.id];
+    }
+
+    return 0;
+  }
+
+  pushVertex(panel, atom, normal, curvature) {
     const position = atom.position;
     const color = this.surfaceColor(panel);
     const uv = this.vertexUv(panel, atom);
@@ -488,6 +577,16 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     this.uvs.push(uv.u, uv.v);
     this.colors.push(color.r, color.g, color.b);
     this.textureSides.push(panel.side === "back" ? 1 : 0);
+    this.curvatures.push(curvature);
+  }
+
+  vertexCurvature(normal, panelNormal) {
+    const dot = Math.abs(
+      normal.x * panelNormal.x +
+      normal.y * panelNormal.y +
+      normal.z * panelNormal.z,
+    );
+    return window.Atoms.clamp((1 - dot) * 4, 0, 1);
   }
 
   vertexUv(panel, atom) {
@@ -526,6 +625,18 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
       u: this.config.mirrorBackTexture ? 1 - uv.u : uv.u,
       v: this.config.flipBackTexture ? 1 - uv.v : uv.v,
     };
+  }
+
+  effectiveSurfaceOpacity() {
+    if (this.twoSidedSheet) {
+      return 1;
+    }
+
+    if (this.config.surfaceStyle === "image" && (this.hasFrontTexture() || this.hasBackTexture())) {
+      return 1;
+    }
+
+    return window.Atoms.clamp(this.config.surfaceOpacity, 0, 1);
   }
 
   surfaceColor(panel) {
@@ -824,17 +935,20 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
       attribute vec2 a_uv;
       attribute vec3 a_color;
       attribute float a_textureSide;
+      attribute float a_curvature;
       uniform mat4 u_matrix;
       varying vec3 v_normal;
       varying vec2 v_uv;
       varying vec3 v_color;
       varying float v_textureSide;
+      varying float v_curvature;
       void main() {
         gl_Position = u_matrix * vec4(a_position, 1.0);
         v_normal = normalize(a_normal);
         v_uv = a_uv;
         v_color = a_color;
         v_textureSide = a_textureSide;
+        v_curvature = a_curvature;
       }
     `;
   }
@@ -848,15 +962,30 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
       uniform float u_ambient;
       uniform float u_intensity;
       uniform int u_lightingModel;
+      uniform int u_fabricEnabled;
+      uniform float u_weaveStrength;
+      uniform int u_foldShadingEnabled;
+      uniform float u_foldShadingStrength;
       uniform float u_opacity;
+      uniform int u_twoSidedSheet;
+      uniform int u_mirrorBackTexture;
+      uniform int u_flipBackTexture;
       uniform bool u_useFrontTexture;
       uniform bool u_useBackTexture;
       varying vec3 v_normal;
       varying vec2 v_uv;
       varying vec3 v_color;
       varying float v_textureSide;
+      varying float v_curvature;
       void main() {
         vec3 normal = normalize(v_normal);
+        bool isBack = v_textureSide > 0.5;
+        if (u_twoSidedSheet == 1) {
+          isBack = !gl_FrontFacing;
+          if (isBack) {
+            normal = -normal;
+          }
+        }
         vec3 sun = normalize(u_sunDirection);
         float front = max(dot(normal, sun), 0.0);
         float back = max(dot(-normal, sun), 0.0);
@@ -868,14 +997,39 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
           float clothLight = u_ambient * 1.08 + (wrap * 0.78 + clothBack + viewLift) * u_intensity;
           light = clamp(clothLight, 0.24, 1.38);
         }
-        bool isBack = v_textureSide > 0.5;
+        vec2 textureUv = v_uv;
+        if (u_twoSidedSheet == 1 && isBack) {
+          if (u_mirrorBackTexture == 1) {
+            textureUv.x = 1.0 - textureUv.x;
+          }
+          if (u_flipBackTexture == 1) {
+            textureUv.y = 1.0 - textureUv.y;
+          }
+        }
         vec4 textureColor = vec4(1.0);
         if (!isBack && u_useFrontTexture) {
-          textureColor = texture2D(u_frontTexture, v_uv);
+          textureColor = texture2D(u_frontTexture, textureUv);
         } else if (isBack && u_useBackTexture) {
-          textureColor = texture2D(u_backTexture, v_uv);
+          textureColor = texture2D(u_backTexture, textureUv);
+        } else if (isBack && u_twoSidedSheet == 1 && u_useFrontTexture) {
+          textureColor = texture2D(u_frontTexture, textureUv);
         }
         vec3 color = textureColor.rgb * v_color * light;
+        if (u_fabricEnabled == 1 && u_weaveStrength > 0.0) {
+          float warp = sin(v_uv.x * 628.3185);
+          float weft = sin(v_uv.y * 628.3185);
+          float fineWarp = sin(v_uv.x * 1256.637);
+          float fineWeft = sin(v_uv.y * 1256.637);
+          float weave = warp * 0.42 + weft * 0.42 + fineWarp * fineWeft * 0.16;
+          float threadShade = 1.0 + weave * u_weaveStrength;
+          color *= clamp(threadShade, 1.0 - u_weaveStrength, 1.0 + u_weaveStrength);
+        }
+        if (u_foldShadingEnabled == 1 && u_foldShadingStrength > 0.0) {
+          float fold = smoothstep(0.02, 0.48, v_curvature);
+          float valley = 1.0 - fold * u_foldShadingStrength * 0.72;
+          float ridge = pow(front, 2.0) * fold * u_foldShadingStrength * 0.18;
+          color = color * valley + vec3(ridge);
+        }
         gl_FragColor = vec4(color, textureColor.a * u_opacity);
       }
     `;

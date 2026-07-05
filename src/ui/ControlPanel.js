@@ -62,6 +62,10 @@ window.Atoms.ControlPanel = class ControlPanel {
       surfaceOpacity: "surfaceOpacityInput",
       surfaceLighting: "surfaceLightingInput",
       surfaceLightingModel: "surfaceLightingModelInput",
+      surfaceFabricEnabled: "surfaceFabricEnabledInput",
+      fabricWeaveStrength: "fabricWeaveStrengthInput",
+      surfaceFoldShadingEnabled: "surfaceFoldShadingEnabledInput",
+      foldShadingStrength: "foldShadingStrengthInput",
       sunAzimuth: "sunAzimuthInput",
       sunElevation: "sunElevationInput",
       sunIntensity: "sunIntensityInput",
@@ -140,6 +144,9 @@ window.Atoms.ControlPanel = class ControlPanel {
     document.getElementById("surfaceBackTextureInput").addEventListener("change", (event) => {
       this.loadSurfaceTexture("back", event.currentTarget.files && event.currentTarget.files[0]);
     });
+    document.getElementById("clearSurfaceImagesButton").addEventListener("click", () => {
+      this.clearSurfaceTextures();
+    });
     document.getElementById("clearUserPinsButton").addEventListener("click", this.handlers.onClearUserPins);
     document.getElementById("frontViewButton").addEventListener("click", this.handlers.onFrontView);
     document.getElementById("defaultViewButton").addEventListener("click", this.handlers.onDefaultView);
@@ -157,6 +164,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       this.config[imageKey] = null;
       this.config[nameKey] = "";
       this.syncLegacySurfaceTexture();
+      this.write();
       this.handlers.onConfigure();
       return;
     }
@@ -181,6 +189,31 @@ window.Atoms.ControlPanel = class ControlPanel {
   syncLegacySurfaceTexture() {
     this.config.surfaceTextureImage = this.config.surfaceFrontTextureImage;
     this.config.surfaceTextureName = this.config.surfaceFrontTextureName;
+  }
+
+  clearSurfaceTextures() {
+    this.config.surfaceTextureImage = null;
+    this.config.surfaceTextureName = "";
+    this.config.surfaceFrontTextureImage = null;
+    this.config.surfaceFrontTextureName = "";
+    this.config.surfaceBackTextureImage = null;
+    this.config.surfaceBackTextureName = "";
+    document.getElementById("surfaceTextureInput").value = "";
+    document.getElementById("surfaceBackTextureInput").value = "";
+    if (this.config.surfaceStyle === "image") {
+      this.config.surfaceStyle = "tint";
+    }
+    this.write();
+    this.handlers.onConfigure();
+  }
+
+  updateSurfaceTextureLabels() {
+    document.getElementById("surfaceTextureName").textContent = this.config.surfaceFrontTextureName
+      ? `Loaded: ${this.config.surfaceFrontTextureName}`
+      : "No front image loaded";
+    document.getElementById("surfaceBackTextureName").textContent = this.config.surfaceBackTextureName
+      ? `Loaded: ${this.config.surfaceBackTextureName}`
+      : "No back image loaded";
   }
 
   applyMaterial(materialId) {
@@ -235,6 +268,7 @@ window.Atoms.ControlPanel = class ControlPanel {
         input.value = this.config[key];
       }
     }
+    this.updateSurfaceTextureLabels();
   }
 
   read() {
@@ -295,6 +329,10 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.surfaceOpacity = window.Atoms.readNumber(document.getElementById(this.ids.surfaceOpacity).value, this.config.surfaceOpacity, 0, 1);
     this.config.surfaceLighting = document.getElementById(this.ids.surfaceLighting).checked;
     this.config.surfaceLightingModel = document.getElementById(this.ids.surfaceLightingModel).value;
+    this.config.surfaceFabricEnabled = document.getElementById(this.ids.surfaceFabricEnabled).checked;
+    this.config.fabricWeaveStrength = window.Atoms.readNumber(document.getElementById(this.ids.fabricWeaveStrength).value, this.config.fabricWeaveStrength, 0, 0.25);
+    this.config.surfaceFoldShadingEnabled = document.getElementById(this.ids.surfaceFoldShadingEnabled).checked;
+    this.config.foldShadingStrength = window.Atoms.readNumber(document.getElementById(this.ids.foldShadingStrength).value, this.config.foldShadingStrength, 0, 0.5);
     this.config.sunAzimuth = window.Atoms.readNumber(document.getElementById(this.ids.sunAzimuth).value, this.config.sunAzimuth, -180, 180);
     this.config.sunElevation = window.Atoms.readNumber(document.getElementById(this.ids.sunElevation).value, this.config.sunElevation, -80, 80);
     this.config.sunIntensity = window.Atoms.readNumber(document.getElementById(this.ids.sunIntensity).value, this.config.sunIntensity, 0, 2);
