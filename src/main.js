@@ -1,4 +1,5 @@
 const canvas = document.getElementById("scene");
+const webglCanvas = document.getElementById("sceneGl");
 const sceneStats = document.getElementById("sceneStats");
 const physicsStats = document.getElementById("physicsStats");
 const config = { ...window.Atoms.defaultConfig, zoomVisualScale: 1 };
@@ -7,6 +8,7 @@ let lattice = new window.Atoms.Lattice(config);
 const solver = new window.Atoms.VerletSolver(config);
 const energy = new window.Atoms.EnergyModel(config);
 const diagnostics = new window.Atoms.Diagnostics(config);
+const webglSurfaces = new window.Atoms.WebGLSurfaceRenderer(webglCanvas, config);
 const renderer = new window.Atoms.CanvasRenderer(canvas, config);
 const pointer = new window.Atoms.PointerController(canvas);
 const orbit = new window.Atoms.OrbitController(camera);
@@ -24,7 +26,9 @@ const pressedKeys = new Set();
 
 function configureRuntime() {
   solver.configure(config);
+  config.webglSurfaceAvailable = Boolean(webglSurfaces.available);
   config.zoomVisualScale = Math.sqrt(camera.zoom);
+  webglCanvas.hidden = !(config.surfaceRenderer === "webgl" && webglSurfaces.available);
 }
 
 function rebuild() {
@@ -114,6 +118,7 @@ function updatePhysicsStats(steps) {
     `<div><span>Collide hits</span>${formatCount(solver.collisionStats.corrections)}</div>`,
     `<div><span>Max push</span>${formatMetric(solver.collisionStats.maxCorrection)}</div>`,
     `<div><span>Texture</span>${formatSurfaceTexture()}</div>`,
+    `<div><span>Renderer</span>${formatSurfaceRenderer()}</div>`,
     `<div><span>Wind profile</span>${formatWindProfile()}</div>`,
     `<div><span>Wind</span>${formatWind()}</div>`,
     `<div><span>Wind avg</span>${formatMetric(solver.windStats.averageForce)}</div>`,
@@ -153,7 +158,20 @@ function formatSurfaceTexture() {
     return config.surfaceStyle;
   }
 
-  return config.surfaceTextureImage ? "front image" : "image missing";
+  const front = Boolean(config.surfaceFrontTextureImage || config.surfaceTextureImage);
+  const back = Boolean(config.surfaceBackTextureImage);
+  if (front && back) return "front + back";
+  if (front) return "front image";
+  if (back) return "back image";
+  return "image missing";
+}
+
+function formatSurfaceRenderer() {
+  if (config.surfaceRenderer !== "webgl") {
+    return "2D canvas";
+  }
+
+  return webglSurfaces.available ? "WebGL" : "2D fallback";
 }
 
 function formatMetric(value) {
@@ -187,6 +205,9 @@ new window.Atoms.ControlPanel(config, {
 });
 
 function resize() {
+  if (webglSurfaces.available) {
+    webglSurfaces.resize(camera);
+  }
   renderer.resize(camera);
   config.zoomVisualScale = Math.sqrt(camera.zoom);
   updateSceneStats();
@@ -349,6 +370,9 @@ function animate(time) {
     needsEnergyUpdate = false;
   }
   updatePhysicsStats(steps);
+  if (config.surfaceRenderer === "webgl") {
+    webglSurfaces.render(lattice, camera);
+  }
   renderer.render(lattice, camera, solver);
 }
 

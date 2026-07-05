@@ -41,8 +41,11 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     const width = this.canvas.width / this.pixelRatio;
     const height = this.canvas.height / this.pixelRatio;
     const ctx = this.ctx;
+    const webglSurfaces = this.config.surfaceRenderer === "webgl" && this.config.webglSurfaceAvailable;
     ctx.clearRect(0, 0, width, height);
-    this.drawBackground(ctx, width, height);
+    if (!webglSurfaces) {
+      this.drawBackground(ctx, width, height);
+    }
 
     const basis = camera.getBasis();
     this.drawWindField(ctx, lattice, camera, basis);
@@ -62,7 +65,9 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       surfaceEntries.sort((a, b) => a.depth - b.depth);
     }
 
-    this.drawSurfaces(ctx, surfaceEntries, minDepth, depthRange);
+    if (!webglSurfaces) {
+      this.drawSurfaces(ctx, surfaceEntries, minDepth, depthRange);
+    }
 
     const bondEntries = this.prepareBondEntries(lattice, projectedAtoms);
     if (this.config.sortBonds) {
@@ -146,19 +151,12 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
   prepareSurfaceEntries(lattice, projectedAtoms) {
     const panels = lattice.surfacePanels || [];
     const surfaceSide = this.config.surfaceSide || "both";
-    const frontImageOnly = this.config.surfaceStyle === "image"
-      && this.config.surfaceTextureImage
-      && surfaceSide === "both";
     let entryIndex = 0;
 
     for (let i = 0; i < panels.length; i += 1) {
       const panel = panels[i];
 
       if (surfaceSide !== "both" && panel.side !== surfaceSide) {
-        continue;
-      }
-
-      if (frontImageOnly && panel.side === "back") {
         continue;
       }
 
@@ -221,10 +219,10 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
 
   drawSurfacePanel(ctx, entry, depthShade) {
     const opacity = window.Atoms.clamp(this.config.surfaceOpacity, 0, 1);
-    const light = 0.65 + depthShade * 0.35;
-    const image = this.config.surfaceTextureImage;
+    const light = (0.65 + depthShade * 0.35) * this.surfaceLight(entry);
+    const image = this.surfaceTextureForSide(entry.panel.side);
 
-    if (this.config.surfaceStyle === "image" && entry.panel.side === "front" && image) {
+    if (this.config.surfaceStyle === "image" && image) {
       this.drawTexturedSurfacePanel(ctx, entry, image, opacity, light);
       return;
     }
@@ -233,25 +231,34 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     const strokeAlpha = opacity * 0.45;
     const color = this.surfaceColor(entry.panel, light);
 
-    ctx.beginPath();
-    ctx.moveTo(entry.a.x, entry.a.y);
-    ctx.lineTo(entry.b.x, entry.b.y);
-    ctx.lineTo(entry.c.x, entry.c.y);
-    ctx.lineTo(entry.d.x, entry.d.y);
-    ctx.closePath();
+    this.traceSurfacePanel(ctx, entry, this.surfaceSeamOverlap());
     ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${fillAlpha.toFixed(3)})`;
     ctx.fill();
-    ctx.lineWidth = 0.7;
-    ctx.strokeStyle = `rgba(${color.strokeR}, ${color.strokeG}, ${color.strokeB}, ${strokeAlpha.toFixed(3)})`;
-    ctx.stroke();
+
+    if (this.config.showSurfaceEdges) {
+      this.traceSurfacePanel(ctx, entry, 0);
+      ctx.lineWidth = 0.7;
+      ctx.strokeStyle = `rgba(${color.strokeR}, ${color.strokeG}, ${color.strokeB}, ${strokeAlpha.toFixed(3)})`;
+      ctx.stroke();
+    }
+  }
+
+  surfaceTextureForSide(side) {
+    if (side === "back") {
+      return this.config.surfaceBackTextureImage;
+    }
+
+    return this.config.surfaceFrontTextureImage || this.config.surfaceTextureImage;
   }
 
   drawTexturedSurfacePanel(ctx, entry, image, opacity, light) {
     const panel = entry.panel;
-    const sx0 = panel.u0 * image.naturalWidth;
-    const sy0 = panel.v0 * image.naturalHeight;
-    const sx1 = panel.u1 * image.naturalWidth;
-    const sy1 = panel.v1 * image.naturalHeight;
+    const source = this.texturedSourceRect(panel, image);
+    const sx0 = source.u0 * image.naturalWidth;
+    const sy0 = source.v0 * image.naturalHeight;
+    const sx1 = source.u1 * image.naturalWidth;
+    const sy1 = source.v1 * image.naturalHeight;
+    const seamOverlap = this.surfaceSeamOverlap();
 
     ctx.save();
     ctx.globalAlpha *= opacity;
@@ -264,6 +271,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       entry.a,
       entry.b,
       entry.c,
+      seamOverlap,
     );
     this.drawImageTriangle(
       ctx,
@@ -274,23 +282,52 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       entry.a,
       entry.c,
       entry.d,
+      seamOverlap,
     );
     ctx.restore();
+    this.drawSurfaceLightingOverlay(ctx, entry, opacity, light);
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(entry.a.x, entry.a.y);
-    ctx.lineTo(entry.b.x, entry.b.y);
-    ctx.lineTo(entry.c.x, entry.c.y);
-    ctx.lineTo(entry.d.x, entry.d.y);
-    ctx.closePath();
-    ctx.lineWidth = 0.55;
-    ctx.strokeStyle = `rgba(230, 246, 250, ${(opacity * 0.22).toFixed(3)})`;
-    ctx.stroke();
-    ctx.restore();
+    if (this.config.showSurfaceEdges) {
+      ctx.save();
+      this.traceSurfacePanel(ctx, entry, 0);
+      ctx.lineWidth = 0.55;
+      ctx.strokeStyle = `rgba(230, 246, 250, ${(opacity * 0.22).toFixed(3)})`;
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
-  drawImageTriangle(ctx, image, s0, s1, s2, d0, d1, d2) {
+  texturedSourceRect(panel, image) {
+    const source = {
+      u0: panel.u0,
+      v0: panel.v0,
+      u1: panel.u1,
+      v1: panel.v1,
+    };
+
+    if (panel.side !== "back") {
+      return source;
+    }
+
+    if (this.config.mirrorBackTexture) {
+      const mirroredU0 = 1 - source.u1;
+      source.u1 = 1 - source.u0;
+      source.u0 = mirroredU0;
+    }
+
+    if (this.config.flipBackTexture) {
+      const flippedV0 = 1 - source.v1;
+      source.v1 = 1 - source.v0;
+      source.v0 = flippedV0;
+    }
+
+    return source;
+  }
+
+  drawImageTriangle(ctx, image, s0, s1, s2, d0, d1, d2, overlap) {
+    const destination0 = overlap > 0 ? this.expandTrianglePoint(d0, d0, d1, d2, overlap) : d0;
+    const destination1 = overlap > 0 ? this.expandTrianglePoint(d1, d0, d1, d2, overlap) : d1;
+    const destination2 = overlap > 0 ? this.expandTrianglePoint(d2, d0, d1, d2, overlap) : d2;
     const denominator = s0.x * (s1.y - s2.y)
       + s1.x * (s2.y - s0.y)
       + s2.x * (s0.y - s1.y);
@@ -299,27 +336,157 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
       return;
     }
 
-    const a = (d0.x * (s1.y - s2.y) + d1.x * (s2.y - s0.y) + d2.x * (s0.y - s1.y)) / denominator;
-    const b = (d0.y * (s1.y - s2.y) + d1.y * (s2.y - s0.y) + d2.y * (s0.y - s1.y)) / denominator;
-    const c = (d0.x * (s2.x - s1.x) + d1.x * (s0.x - s2.x) + d2.x * (s1.x - s0.x)) / denominator;
-    const d = (d0.y * (s2.x - s1.x) + d1.y * (s0.x - s2.x) + d2.y * (s1.x - s0.x)) / denominator;
-    const e = (d0.x * (s1.x * s2.y - s2.x * s1.y)
-      + d1.x * (s2.x * s0.y - s0.x * s2.y)
-      + d2.x * (s0.x * s1.y - s1.x * s0.y)) / denominator;
-    const f = (d0.y * (s1.x * s2.y - s2.x * s1.y)
-      + d1.y * (s2.x * s0.y - s0.x * s2.y)
-      + d2.y * (s0.x * s1.y - s1.x * s0.y)) / denominator;
+    const a = (destination0.x * (s1.y - s2.y) + destination1.x * (s2.y - s0.y) + destination2.x * (s0.y - s1.y)) / denominator;
+    const b = (destination0.y * (s1.y - s2.y) + destination1.y * (s2.y - s0.y) + destination2.y * (s0.y - s1.y)) / denominator;
+    const c = (destination0.x * (s2.x - s1.x) + destination1.x * (s0.x - s2.x) + destination2.x * (s1.x - s0.x)) / denominator;
+    const d = (destination0.y * (s2.x - s1.x) + destination1.y * (s0.x - s2.x) + destination2.y * (s1.x - s0.x)) / denominator;
+    const e = (destination0.x * (s1.x * s2.y - s2.x * s1.y)
+      + destination1.x * (s2.x * s0.y - s0.x * s2.y)
+      + destination2.x * (s0.x * s1.y - s1.x * s0.y)) / denominator;
+    const f = (destination0.y * (s1.x * s2.y - s2.x * s1.y)
+      + destination1.y * (s2.x * s0.y - s0.x * s2.y)
+      + destination2.y * (s0.x * s1.y - s1.x * s0.y)) / denominator;
 
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(d0.x, d0.y);
-    ctx.lineTo(d1.x, d1.y);
-    ctx.lineTo(d2.x, d2.y);
+    ctx.moveTo(destination0.x, destination0.y);
+    ctx.lineTo(destination1.x, destination1.y);
+    ctx.lineTo(destination2.x, destination2.y);
     ctx.closePath();
     ctx.clip();
     ctx.transform(a, b, c, d, e, f);
     ctx.drawImage(image, 0, 0);
     ctx.restore();
+  }
+
+  drawSurfaceLightingOverlay(ctx, entry, opacity, light) {
+    if (!this.config.surfaceLighting || opacity <= 0) {
+      return;
+    }
+
+    const shade = window.Atoms.clamp(light, 0.08, 1.55);
+    let alpha = 0;
+    let fillStyle = "";
+
+    if (shade < 0.98) {
+      alpha = (0.98 - shade) * 0.42 * opacity;
+      fillStyle = `rgba(0, 0, 0, ${alpha.toFixed(3)})`;
+    } else if (shade > 1.04) {
+      alpha = (shade - 1.04) * 0.22 * opacity;
+      fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(3)})`;
+    }
+
+    if (alpha <= 0.001) {
+      return;
+    }
+
+    ctx.save();
+    this.traceSurfacePanel(ctx, entry, this.surfaceSeamOverlap());
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  traceSurfacePanel(ctx, entry, overlap) {
+    const points = overlap > 0
+      ? this.expandedSurfacePanelPoints(entry, overlap)
+      : [entry.a, entry.b, entry.c, entry.d];
+
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    ctx.lineTo(points[1].x, points[1].y);
+    ctx.lineTo(points[2].x, points[2].y);
+    ctx.lineTo(points[3].x, points[3].y);
+    ctx.closePath();
+  }
+
+  expandedSurfacePanelPoints(entry, amount) {
+    const centerX = (entry.a.x + entry.b.x + entry.c.x + entry.d.x) * 0.25;
+    const centerY = (entry.a.y + entry.b.y + entry.c.y + entry.d.y) * 0.25;
+    return [
+      this.expandPointFromCenter(entry.a, centerX, centerY, amount),
+      this.expandPointFromCenter(entry.b, centerX, centerY, amount),
+      this.expandPointFromCenter(entry.c, centerX, centerY, amount),
+      this.expandPointFromCenter(entry.d, centerX, centerY, amount),
+    ];
+  }
+
+  surfaceSeamOverlap() {
+    return this.config.showSurfaceEdges ? 0 : 1.15;
+  }
+
+  expandTrianglePoint(point, a, b, c, amount) {
+    const centerX = (a.x + b.x + c.x) / 3;
+    const centerY = (a.y + b.y + c.y) / 3;
+    return this.expandPointFromCenter(point, centerX, centerY, amount);
+  }
+
+  expandPointFromCenter(point, centerX, centerY, amount) {
+    const deltaX = point.x - centerX;
+    const deltaY = point.y - centerY;
+    const length = Math.hypot(deltaX, deltaY);
+
+    if (length < 0.000001) {
+      return point;
+    }
+
+    const scale = (length + amount) / length;
+    return {
+      x: centerX + deltaX * scale,
+      y: centerY + deltaY * scale,
+    };
+  }
+
+  surfaceLight(entry) {
+    if (!this.config.surfaceLighting) {
+      return 1;
+    }
+
+    const normal = this.surfaceNormal(entry.panel);
+    const sun = this.sunDirection();
+    const frontDiffuse = Math.max(0, normal.x * sun.x + normal.y * sun.y + normal.z * sun.z);
+    const backDiffuse = Math.max(0, -(normal.x * sun.x + normal.y * sun.y + normal.z * sun.z)) * 0.18;
+    const ambient = window.Atoms.clamp(this.config.sunAmbient, 0, 1);
+    const intensity = window.Atoms.clamp(this.config.sunIntensity, 0, 2);
+    return window.Atoms.clamp(ambient + (frontDiffuse + backDiffuse) * intensity, 0.12, 1.65);
+  }
+
+  surfaceNormal(panel) {
+    const a = panel.a.position;
+    const b = panel.b.position;
+    const d = panel.d.position;
+    const abX = b.x - a.x;
+    const abY = b.y - a.y;
+    const abZ = b.z - a.z;
+    const adX = d.x - a.x;
+    const adY = d.y - a.y;
+    const adZ = d.z - a.z;
+    const nx = abY * adZ - abZ * adY;
+    const ny = abZ * adX - abX * adZ;
+    const nz = abX * adY - abY * adX;
+    const length = Math.hypot(nx, ny, nz);
+
+    if (length < 0.000001) {
+      return { x: 0, y: 0, z: 1 };
+    }
+
+    return {
+      x: nx / length,
+      y: ny / length,
+      z: nz / length,
+    };
+  }
+
+  sunDirection() {
+    const azimuth = (this.config.sunAzimuth || 0) * Math.PI / 180;
+    const elevation = (this.config.sunElevation || 0) * Math.PI / 180;
+    const horizontal = Math.cos(elevation);
+
+    return {
+      x: Math.cos(azimuth) * horizontal,
+      y: -Math.sin(elevation),
+      z: Math.sin(azimuth) * horizontal,
+    };
   }
 
   surfaceColor(panel, light) {

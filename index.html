@@ -10,7 +10,8 @@
 <body>
   <main class="app">
     <section class="viewport" aria-label="Simulation view">
-      <canvas id="scene" aria-label="Interactive atom lattice simulation"></canvas>
+      <canvas id="sceneGl" class="scene-canvas scene-canvas--webgl" aria-hidden="true"></canvas>
+      <canvas id="scene" class="scene-canvas scene-canvas--overlay" aria-label="Interactive atom lattice simulation"></canvas>
       <div id="sceneStats" class="scene-stats" aria-live="polite"></div>
       <div id="physicsStats" class="physics-stats" aria-live="polite"></div>
     </section>
@@ -129,7 +130,7 @@
             <label>
               Atom mass
               <input id="atomMassInput" type="range" min="0.1" max="10" step="0.1">
-              <span>Mass of each free atom in spring mode. Heavier atoms accelerate less from spring and mouse forces.</span>
+              <span>Mass of each free atom in spring mode. Very light atoms use smaller internal timesteps for stability.</span>
             </label>
             <label>
               Release energy
@@ -320,6 +321,21 @@
               <small>Draws generated outer panels behind the tubes and atoms. This is the base for future image textures.</small>
             </span>
           </label>
+          <label class="checkbox-control">
+            <input id="showSurfaceEdgesInput" type="checkbox">
+            <span class="checkbox-text">
+              Show surface edges
+              <small>Draws panel outlines for checking UVs and surface topology.</small>
+            </span>
+          </label>
+          <label>
+            Surface renderer
+            <select id="surfaceRendererInput">
+              <option value="webgl">WebGL</option>
+              <option value="canvas">2D canvas</option>
+            </select>
+            <span>WebGL gives textured mesh surfaces proper depth and shader lighting. 2D canvas keeps the older renderer.</span>
+          </label>
           <label>
             Surface side
             <select id="surfaceSideInput">
@@ -345,9 +361,55 @@
             <span>Local image mapped across the front side of a depth 1 surface. Nothing is uploaded.</span>
           </label>
           <label>
+            Back image
+            <input id="surfaceBackTextureInput" type="file" accept="image/*">
+            <span>Optional local image mapped across the back side. If empty, the back uses procedural color.</span>
+          </label>
+          <label class="checkbox-control">
+            <input id="mirrorBackTextureInput" type="checkbox">
+            <span class="checkbox-text">
+              Mirror back image
+              <small>Flips the back texture horizontally. This matches most real printed flag backs.</small>
+            </span>
+          </label>
+          <label class="checkbox-control">
+            <input id="flipBackTextureInput" type="checkbox">
+            <span class="checkbox-text">
+              Flip back image
+              <small>Flips the back texture vertically for images that need alternate orientation.</small>
+            </span>
+          </label>
+          <label>
             Surface opacity
             <input id="surfaceOpacityInput" type="range" min="0" max="1" step="0.01">
             <span>Transparency of generated surface panels. Lower values keep the atoms and tubes dominant.</span>
+          </label>
+          <label class="checkbox-control">
+            <input id="surfaceLightingInput" type="checkbox">
+            <span class="checkbox-text">
+              Surface lighting
+              <small>Shades surface panels from a directional sun using their deformed normals.</small>
+            </span>
+          </label>
+          <label>
+            Sun azimuth
+            <input id="sunAzimuthInput" type="range" min="-180" max="180" step="1">
+            <span>Horizontal sun direction in world space.</span>
+          </label>
+          <label>
+            Sun elevation
+            <input id="sunElevationInput" type="range" min="-80" max="80" step="1">
+            <span>Vertical sun angle. Higher values light surfaces more from above.</span>
+          </label>
+          <label>
+            Sun intensity
+            <input id="sunIntensityInput" type="range" min="0" max="2" step="0.01">
+            <span>Strength of directional light from the sun.</span>
+          </label>
+          <label>
+            Ambient light
+            <input id="sunAmbientInput" type="range" min="0" max="1" step="0.01">
+            <span>Base light all surfaces receive even when facing away from the sun.</span>
           </label>
           <label>
             Atom depth shading
@@ -411,25 +473,26 @@
     </aside>
   </main>
 
-  <script src="./src/config.js?v=20260704l"></script>
-  <script src="./src/math/vec3.js?v=20260704l"></script>
-  <script src="./src/math/camera.js?v=20260704l"></script>
-  <script src="./src/math/projection.js?v=20260704l"></script>
-  <script src="./src/simulation/Atom.js?v=20260704l"></script>
-  <script src="./src/simulation/Bond.js?v=20260704l"></script>
-  <script src="./src/simulation/BendingConstraint.js?v=20260704l"></script>
-  <script src="./src/simulation/Lattice.js?v=20260704l"></script>
-  <script src="./src/simulation/WindField.js?v=20260704l"></script>
-  <script src="./src/simulation/VerletSolver.js?v=20260704l"></script>
-  <script src="./src/simulation/EnergyModel.js?v=20260704l"></script>
-  <script src="./src/simulation/Diagnostics.js?v=20260704l"></script>
-  <script src="./src/rendering/DrawStyle.js?v=20260704l"></script>
-  <script src="./src/rendering/CanvasRenderer.js?v=20260704l"></script>
-  <script src="./src/input/PointerController.js?v=20260704l"></script>
-  <script src="./src/input/OrbitController.js?v=20260704l"></script>
-  <script src="./src/input/DragController.js?v=20260704l"></script>
-  <script src="./src/input/PinEditController.js?v=20260704l"></script>
-  <script src="./src/ui/ControlPanel.js?v=20260704l"></script>
-  <script src="./src/main.js?v=20260704l"></script>
+  <script src="./src/config.js?v=20260705f"></script>
+  <script src="./src/math/vec3.js?v=20260705f"></script>
+  <script src="./src/math/camera.js?v=20260705f"></script>
+  <script src="./src/math/projection.js?v=20260705f"></script>
+  <script src="./src/simulation/Atom.js?v=20260705f"></script>
+  <script src="./src/simulation/Bond.js?v=20260705f"></script>
+  <script src="./src/simulation/BendingConstraint.js?v=20260705f"></script>
+  <script src="./src/simulation/Lattice.js?v=20260705f"></script>
+  <script src="./src/simulation/WindField.js?v=20260705f"></script>
+  <script src="./src/simulation/VerletSolver.js?v=20260705f"></script>
+  <script src="./src/simulation/EnergyModel.js?v=20260705f"></script>
+  <script src="./src/simulation/Diagnostics.js?v=20260705f"></script>
+  <script src="./src/rendering/DrawStyle.js?v=20260705f"></script>
+  <script src="./src/rendering/WebGLSurfaceRenderer.js?v=20260705f"></script>
+  <script src="./src/rendering/CanvasRenderer.js?v=20260705f"></script>
+  <script src="./src/input/PointerController.js?v=20260705f"></script>
+  <script src="./src/input/OrbitController.js?v=20260705f"></script>
+  <script src="./src/input/DragController.js?v=20260705f"></script>
+  <script src="./src/input/PinEditController.js?v=20260705f"></script>
+  <script src="./src/ui/ControlPanel.js?v=20260705f"></script>
+  <script src="./src/main.js?v=20260705f"></script>
 </body>
 </html>

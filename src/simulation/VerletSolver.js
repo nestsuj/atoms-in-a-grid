@@ -15,8 +15,8 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.shearDamping = config.shearDamping;
     this.bendStiffness = config.bendStiffness;
     this.bendDamping = config.bendDamping;
-    this.mass = config.atomMass;
-    this.inverseMass = 1 / Math.max(0.1, this.mass);
+    this.mass = window.Atoms.readNumber(config.atomMass, 1, 0.1, 10);
+    this.inverseMass = 1 / this.mass;
     this.releaseEnergy = config.releaseEnergy;
     this.dragStrength = config.dragStrength;
     this.mouseStiffness = config.mouseStiffness;
@@ -120,7 +120,7 @@ window.Atoms.VerletSolver = class VerletSolver {
   }
 
   stepSpringForces(lattice, time) {
-    const substeps = Math.max(1, this.iterations);
+    const substeps = this.springSubsteps();
     const dt = 1 / substeps;
     const dtSquared = dt * dt;
     const substepDamping = Math.pow(this.damping, dt);
@@ -140,6 +140,12 @@ window.Atoms.VerletSolver = class VerletSolver {
       this.solveCollisions(lattice);
       this.applyLocks(lattice);
     }
+  }
+
+  springSubsteps() {
+    const baseSubsteps = Math.max(1, this.iterations);
+    const lightMassMultiplier = Math.ceil(Math.sqrt(1 / this.mass));
+    return Math.min(48, baseSubsteps * Math.max(1, lightMassMultiplier));
   }
 
   stepConstraints(lattice, time) {

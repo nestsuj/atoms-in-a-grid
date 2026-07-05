@@ -53,9 +53,18 @@ window.Atoms.ControlPanel = class ControlPanel {
       simpleBondColors: "simpleBondColorsInput",
       showDiagnostics: "showDiagnosticsInput",
       showSurfaces: "showSurfacesInput",
+      surfaceRenderer: "surfaceRendererInput",
+      showSurfaceEdges: "showSurfaceEdgesInput",
       surfaceSide: "surfaceSideInput",
       surfaceStyle: "surfaceStyleInput",
+      mirrorBackTexture: "mirrorBackTextureInput",
+      flipBackTexture: "flipBackTextureInput",
       surfaceOpacity: "surfaceOpacityInput",
+      surfaceLighting: "surfaceLightingInput",
+      sunAzimuth: "sunAzimuthInput",
+      sunElevation: "sunElevationInput",
+      sunIntensity: "sunIntensityInput",
+      sunAmbient: "sunAmbientInput",
       showWindField: "showWindFieldInput",
       showCollisionDebug: "showCollisionDebugInput",
       atomDepthShading: "atomDepthShadingInput",
@@ -125,7 +134,10 @@ window.Atoms.ControlPanel = class ControlPanel {
 
     document.getElementById("resetButton").addEventListener("click", this.handlers.onReset);
     document.getElementById("surfaceTextureInput").addEventListener("change", (event) => {
-      this.loadSurfaceTexture(event.currentTarget.files && event.currentTarget.files[0]);
+      this.loadSurfaceTexture("front", event.currentTarget.files && event.currentTarget.files[0]);
+    });
+    document.getElementById("surfaceBackTextureInput").addEventListener("change", (event) => {
+      this.loadSurfaceTexture("back", event.currentTarget.files && event.currentTarget.files[0]);
     });
     document.getElementById("clearUserPinsButton").addEventListener("click", this.handlers.onClearUserPins);
     document.getElementById("frontViewButton").addEventListener("click", this.handlers.onFrontView);
@@ -136,10 +148,14 @@ window.Atoms.ControlPanel = class ControlPanel {
     });
   }
 
-  loadSurfaceTexture(file) {
+  loadSurfaceTexture(side, file) {
+    const imageKey = side === "back" ? "surfaceBackTextureImage" : "surfaceFrontTextureImage";
+    const nameKey = side === "back" ? "surfaceBackTextureName" : "surfaceFrontTextureName";
+
     if (!file || !file.type.startsWith("image/")) {
-      this.config.surfaceTextureImage = null;
-      this.config.surfaceTextureName = "";
+      this.config[imageKey] = null;
+      this.config[nameKey] = "";
+      this.syncLegacySurfaceTexture();
       this.handlers.onConfigure();
       return;
     }
@@ -148,8 +164,9 @@ window.Atoms.ControlPanel = class ControlPanel {
     reader.addEventListener("load", () => {
       const image = new Image();
       image.addEventListener("load", () => {
-        this.config.surfaceTextureImage = image;
-        this.config.surfaceTextureName = file.name;
+        this.config[imageKey] = image;
+        this.config[nameKey] = file.name;
+        this.syncLegacySurfaceTexture();
         this.config.showSurfaces = true;
         this.config.surfaceStyle = "image";
         this.write();
@@ -158,6 +175,11 @@ window.Atoms.ControlPanel = class ControlPanel {
       image.src = reader.result;
     });
     reader.readAsDataURL(file);
+  }
+
+  syncLegacySurfaceTexture() {
+    this.config.surfaceTextureImage = this.config.surfaceFrontTextureImage;
+    this.config.surfaceTextureName = this.config.surfaceFrontTextureName;
   }
 
   applyMaterial(materialId) {
@@ -263,9 +285,18 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.simpleBondColors = document.getElementById(this.ids.simpleBondColors).checked;
     this.config.showDiagnostics = document.getElementById(this.ids.showDiagnostics).checked;
     this.config.showSurfaces = document.getElementById(this.ids.showSurfaces).checked;
+    this.config.surfaceRenderer = document.getElementById(this.ids.surfaceRenderer).value;
+    this.config.showSurfaceEdges = document.getElementById(this.ids.showSurfaceEdges).checked;
     this.config.surfaceSide = document.getElementById(this.ids.surfaceSide).value;
     this.config.surfaceStyle = document.getElementById(this.ids.surfaceStyle).value;
+    this.config.mirrorBackTexture = document.getElementById(this.ids.mirrorBackTexture).checked;
+    this.config.flipBackTexture = document.getElementById(this.ids.flipBackTexture).checked;
     this.config.surfaceOpacity = window.Atoms.readNumber(document.getElementById(this.ids.surfaceOpacity).value, this.config.surfaceOpacity, 0, 1);
+    this.config.surfaceLighting = document.getElementById(this.ids.surfaceLighting).checked;
+    this.config.sunAzimuth = window.Atoms.readNumber(document.getElementById(this.ids.sunAzimuth).value, this.config.sunAzimuth, -180, 180);
+    this.config.sunElevation = window.Atoms.readNumber(document.getElementById(this.ids.sunElevation).value, this.config.sunElevation, -80, 80);
+    this.config.sunIntensity = window.Atoms.readNumber(document.getElementById(this.ids.sunIntensity).value, this.config.sunIntensity, 0, 2);
+    this.config.sunAmbient = window.Atoms.readNumber(document.getElementById(this.ids.sunAmbient).value, this.config.sunAmbient, 0, 1);
     this.config.showWindField = document.getElementById(this.ids.showWindField).checked;
     this.config.showCollisionDebug = document.getElementById(this.ids.showCollisionDebug).checked;
     this.config.atomDepthShading = window.Atoms.readNumber(document.getElementById(this.ids.atomDepthShading).value, this.config.atomDepthShading, 0, 1);

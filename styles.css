@@ -46,21 +46,32 @@ body {
   overflow: hidden;
 }
 
-#scene {
+.scene-canvas {
   display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  touch-action: none;
-  cursor: grab;
+}
+
+.scene-canvas--webgl {
+  z-index: 0;
   background: #151922;
 }
 
-#scene.is-dragging {
+.scene-canvas--overlay {
+  z-index: 1;
+  touch-action: none;
+  cursor: grab;
+}
+
+.scene-canvas--overlay.is-dragging {
   cursor: grabbing;
 }
 
 .scene-stats {
   position: absolute;
+  z-index: 2;
   top: 12px;
   left: 12px;
   display: grid;
@@ -89,6 +100,7 @@ body {
 
 .physics-stats {
   position: absolute;
+  z-index: 2;
   top: 12px;
   right: 12px;
   display: grid;
