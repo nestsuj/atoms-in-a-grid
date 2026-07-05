@@ -75,7 +75,9 @@ window.Atoms.ControlPanel = class ControlPanel {
       atomDepthShading: "atomDepthShadingInput",
       energyUpdateRate: "energyUpdateRateInput",
     };
+    this.valueFormatters = this.createValueFormatters();
     this.bind();
+    this.ensureValueReadouts();
     this.applyMaterial(this.config.material);
     this.applyWindProfile(this.config.windProfile);
     this.write();
@@ -124,6 +126,18 @@ window.Atoms.ControlPanel = class ControlPanel {
           document.getElementById(this.ids.windProfile).value = "custom";
         }
 
+        if (["collisionEnabled", "collisionRadiusScale", "collisionStiffness", "collisionPasses"].includes(key)) {
+          this.setOptionalSelectValue("collisionPresetInput", "custom");
+        }
+
+        if (this.isRenderKey(key)) {
+          this.setOptionalSelectValue("renderPresetInput", "custom");
+        }
+
+        this.updateValueReadouts();
+        this.updateContextVisibility();
+        this.updateHints();
+
         if (["width", "height", "depth", "restLength"].includes(key)) {
           this.handlers.onRebuild();
         } else {
@@ -137,6 +151,12 @@ window.Atoms.ControlPanel = class ControlPanel {
       }
     }
 
+    this.bindButton("resetMaterialButton", () => this.resetMaterialSliders());
+    this.bindButton("resetCollisionButton", () => this.resetCollisionSettings());
+    this.bindButton("resetWindButton", () => this.resetWindProfile());
+    this.bindButton("resetRenderingButton", () => this.resetRenderingForScene());
+    this.bindPresetSelect("collisionPresetInput", (value) => this.applyCollisionPreset(value));
+    this.bindPresetSelect("renderPresetInput", (value) => this.applyRenderPreset(value));
     document.getElementById("resetButton").addEventListener("click", this.handlers.onReset);
     document.getElementById("surfaceTextureInput").addEventListener("change", (event) => {
       this.loadSurfaceTexture("front", event.currentTarget.files && event.currentTarget.files[0]);
@@ -154,6 +174,333 @@ window.Atoms.ControlPanel = class ControlPanel {
       const paused = this.handlers.onTogglePause();
       event.currentTarget.textContent = paused ? "Resume" : "Pause";
     });
+  }
+
+  bindButton(id, handler) {
+    const button = document.getElementById(id);
+    if (button) {
+      button.addEventListener("click", handler);
+    }
+  }
+
+  bindPresetSelect(id, handler) {
+    const select = document.getElementById(id);
+    if (!select) {
+      return;
+    }
+
+    select.addEventListener("change", () => {
+      if (select.value === "custom") {
+        return;
+      }
+      handler(select.value);
+    });
+  }
+
+  setOptionalSelectValue(id, value) {
+    const select = document.getElementById(id);
+    if (select) {
+      select.value = value;
+    }
+  }
+
+  createValueFormatters() {
+    const percent = (value) => `${Math.round(Number(value) * 100)}%`;
+    const decimal = (digits) => (value) => Number(value).toFixed(digits);
+
+    return {
+      restLength: (value) => `${Math.round(Number(value))} px`,
+      atomRadius: (value) => `${Math.round(Number(value))} px`,
+      stiffness: percent,
+      shearStiffness: percent,
+      springDamping: percent,
+      shearDamping: percent,
+      bendStiffness: percent,
+      bendDamping: percent,
+      atomMass: (value) => `${decimal(1)(value)} mass`,
+      releaseEnergy: percent,
+      dragStrength: percent,
+      mouseStiffness: (value) => `${decimal(1)(value)} force`,
+      mouseDamping: (value) => `${decimal(2)(value)} damping`,
+      collisionRadiusScale: (value) => `${decimal(2)(value)} x atom radius`,
+      collisionStiffness: percent,
+      collisionPasses: (value) => `${Math.round(Number(value))} pass${Math.round(Number(value)) === 1 ? "" : "es"}`,
+      gravityStrength: (value) => `${decimal(2)(value)} g`,
+      windStrength: (value) => `${decimal(2)(value)} force`,
+      windTurbulence: (value) => `${decimal(2)(value)} gust`,
+      windScale: (value) => `${Math.round(Number(value))} px`,
+      windSpeed: (value) => `${decimal(2)(value)} speed`,
+      windDrag: (value) => `${decimal(2)(value)} drag`,
+      windFlutter: (value) => `${decimal(2)(value)} flutter`,
+      windResponse: percent,
+      damping: (value) => `${(Number(value) * 100).toFixed(2)}% retained`,
+      iterations: (value) => `${Math.round(Number(value))} step${Math.round(Number(value)) === 1 ? "" : "s"}`,
+      physicsRate: (value) => `${Math.round(Number(value))} Hz`,
+      surfaceOpacity: percent,
+      fabricWeaveStrength: percent,
+      foldShadingStrength: percent,
+      sunAzimuth: (value) => `${Math.round(Number(value))} deg`,
+      sunElevation: (value) => `${Math.round(Number(value))} deg`,
+      sunIntensity: percent,
+      sunAmbient: percent,
+      atomDepthShading: percent,
+      energyUpdateRate: (value) => `${Math.round(Number(value))} frame${Math.round(Number(value)) === 1 ? "" : "s"}`,
+    };
+  }
+
+  ensureValueReadouts() {
+    for (const [key, id] of Object.entries(this.ids)) {
+      const input = document.getElementById(id);
+      if (!input || !["range", "number"].includes(input.type)) {
+        continue;
+      }
+
+      const existing = input.parentElement.querySelector(`[data-value-for="${key}"]`);
+      if (existing) {
+        continue;
+      }
+
+      const output = document.createElement("output");
+      output.className = "control-value";
+      output.dataset.valueFor = key;
+      output.setAttribute("for", id);
+      input.insertAdjacentElement("afterend", output);
+    }
+  }
+
+  updateValueReadouts() {
+    for (const [key, id] of Object.entries(this.ids)) {
+      const input = document.getElementById(id);
+      const output = document.querySelector(`[data-value-for="${key}"]`);
+      if (!input || !output) {
+        continue;
+      }
+
+      const formatter = this.valueFormatters[key] || ((value) => value);
+      output.value = formatter(input.value);
+      output.textContent = output.value;
+    }
+  }
+
+  updateHints() {
+    const hint = document.getElementById("uiHint");
+    if (!hint) {
+      return;
+    }
+
+    const messages = [];
+    if (this.config.showSurfaces && this.config.surfaceRenderer === "canvas" && this.config.depth === 1) {
+      messages.push("WebGL is recommended for folded cloth because it depth-tests the surface.");
+    }
+    if (this.config.showSurfaces && this.config.surfaceStyle === "image" && this.config.depth > 1) {
+      messages.push("Image mapping is most predictable on depth 1 cloth surfaces.");
+    }
+    if (this.config.collisionEnabled && this.config.depth === 1 && this.config.collisionPasses < 2) {
+      messages.push("Cloth self-collision usually behaves better with 2 or more collision passes.");
+    }
+    if (this.config.windEnabled && !this.config.showWindField && this.config.depth === 1) {
+      messages.push("Turn on Show wind field when tuning flag gusts.");
+    }
+
+    hint.textContent = messages[0] || "";
+    hint.hidden = messages.length === 0;
+  }
+
+  updateContextVisibility() {
+    const hasSurfaces = Boolean(this.config.showSurfaces);
+    const usesImage = this.config.surfaceStyle === "image";
+    const hasWind = Boolean(this.config.windEnabled);
+
+    this.setControlVisible("surfaceSide", hasSurfaces);
+    this.setControlVisible("surfaceStyle", hasSurfaces);
+    this.setControlVisible("mirrorBackTexture", hasSurfaces && usesImage);
+    this.setControlVisible("flipBackTexture", hasSurfaces && usesImage);
+    this.setControlVisible("surfaceOpacity", hasSurfaces);
+    this.setControlVisible("surfaceLighting", hasSurfaces);
+    this.setControlVisible("surfaceLightingModel", hasSurfaces);
+    this.setControlVisible("surfaceFabricEnabled", hasSurfaces);
+    this.setControlVisible("fabricWeaveStrength", hasSurfaces && this.config.surfaceFabricEnabled);
+    this.setControlVisible("surfaceFoldShadingEnabled", hasSurfaces);
+    this.setControlVisible("foldShadingStrength", hasSurfaces && this.config.surfaceFoldShadingEnabled);
+    this.setControlVisible("sunAzimuth", hasSurfaces && this.config.surfaceLighting);
+    this.setControlVisible("sunElevation", hasSurfaces && this.config.surfaceLighting);
+    this.setControlVisible("sunIntensity", hasSurfaces && this.config.surfaceLighting);
+    this.setControlVisible("sunAmbient", hasSurfaces && this.config.surfaceLighting);
+    this.setControlVisible("windDirection", hasWind);
+    this.setControlVisible("windStrength", hasWind);
+    this.setControlVisible("windTurbulence", hasWind);
+    this.setControlVisible("windScale", hasWind);
+    this.setControlVisible("windSpeed", hasWind);
+    this.setControlVisible("windDrag", hasWind);
+    this.setControlVisible("windFlutter", hasWind);
+    this.setControlVisible("windResponse", hasWind);
+  }
+
+  setControlVisible(key, visible) {
+    const input = document.getElementById(this.ids[key]);
+    const control = input && input.closest("label");
+    if (control) {
+      control.classList.toggle("is-hidden", !visible);
+    }
+  }
+
+  resetMaterialSliders() {
+    const materialId = this.config.material === "custom"
+      ? (this.config.depth === 1 ? "cloth" : "molecular")
+      : this.config.material;
+    this.applyMaterial(materialId);
+    this.config.scenePreset = "custom";
+    this.write();
+    this.handlers.onMaterialChange();
+  }
+
+  resetWindProfile() {
+    const profileId = this.config.windProfile === "custom"
+      ? (this.config.depth === 1 ? "flag" : "calm")
+      : this.config.windProfile;
+    this.applyWindProfile(profileId);
+    this.config.scenePreset = "custom";
+    this.write();
+    this.handlers.onConfigure();
+  }
+
+  resetCollisionSettings() {
+    const clothLike = this.config.depth === 1;
+    this.config.collisionEnabled = clothLike;
+    this.config.collisionRadiusScale = clothLike ? 1.35 : 1.6;
+    this.config.collisionStiffness = clothLike ? 0.45 : 0.65;
+    this.config.collisionPasses = clothLike ? 2 : 1;
+    this.config.scenePreset = "custom";
+    this.setOptionalSelectValue("collisionPresetInput", clothLike ? "cloth" : "off");
+    this.write();
+    this.handlers.onConfigure();
+  }
+
+  applyCollisionPreset(presetId) {
+    const presets = {
+      off: {
+        collisionEnabled: false,
+        collisionRadiusScale: 1.35,
+        collisionStiffness: 0.45,
+        collisionPasses: 1,
+      },
+      cloth: {
+        collisionEnabled: true,
+        collisionRadiusScale: 1.35,
+        collisionStiffness: 0.45,
+        collisionPasses: 2,
+      },
+      robust: {
+        collisionEnabled: true,
+        collisionRadiusScale: 1.5,
+        collisionStiffness: 0.6,
+        collisionPasses: 4,
+      },
+    };
+    const preset = presets[presetId];
+    if (!preset) {
+      return;
+    }
+
+    Object.assign(this.config, preset);
+    this.config.scenePreset = "custom";
+    this.write();
+    this.handlers.onConfigure();
+  }
+
+  resetRenderingForScene() {
+    const clothLike = this.config.depth === 1 || this.config.scenePreset === "flag";
+    this.config.showDiagnostics = false;
+    this.config.showWindField = clothLike;
+    this.config.showCollisionDebug = false;
+    this.config.showSurfaces = clothLike;
+    this.config.surfaceRenderer = "webgl";
+    this.config.showSurfaceEdges = false;
+    this.config.surfaceSide = "both";
+    this.config.surfaceStyle = clothLike && this.config.surfaceFrontTextureImage ? "image" : "tint";
+    this.config.surfaceOpacity = 1;
+    this.config.surfaceLighting = true;
+    this.config.surfaceLightingModel = clothLike ? "cloth" : "standard";
+    this.config.surfaceFabricEnabled = clothLike;
+    this.config.fabricWeaveStrength = clothLike ? 0.08 : 0;
+    this.config.surfaceFoldShadingEnabled = clothLike;
+    this.config.foldShadingStrength = clothLike ? 0.08 : 0;
+    this.config.showAtoms = !clothLike;
+    this.config.showBonds = !clothLike;
+    this.config.fastLargeGridAtoms = true;
+    this.config.sortBonds = false;
+    this.config.sortAtoms = false;
+    this.config.simpleBondColors = false;
+    this.config.scenePreset = "custom";
+    this.setOptionalSelectValue("renderPresetInput", clothLike ? "cloth" : "atoms");
+    this.write();
+    this.handlers.onConfigure();
+  }
+
+  applyRenderPreset(presetId) {
+    const clothLike = presetId === "cloth";
+    const debug = presetId === "debug";
+    if (!["atoms", "cloth", "debug"].includes(presetId)) {
+      return;
+    }
+
+    this.config.showDiagnostics = debug;
+    this.config.showWindField = debug && this.config.windEnabled;
+    this.config.showCollisionDebug = debug && this.config.collisionEnabled;
+    this.config.showSurfaces = clothLike || debug;
+    this.config.surfaceRenderer = "webgl";
+    this.config.showSurfaceEdges = debug;
+    this.config.surfaceSide = "both";
+    this.config.surfaceOpacity = 1;
+    this.config.surfaceLighting = true;
+    this.config.surfaceLightingModel = clothLike ? "cloth" : "standard";
+    this.config.surfaceFabricEnabled = clothLike;
+    this.config.fabricWeaveStrength = clothLike ? 0.08 : 0;
+    this.config.surfaceFoldShadingEnabled = clothLike;
+    this.config.foldShadingStrength = clothLike ? 0.08 : 0;
+    this.config.showAtoms = presetId === "atoms" || debug;
+    this.config.showBonds = presetId === "atoms" || debug;
+    this.config.fastLargeGridAtoms = true;
+    this.config.sortBonds = false;
+    this.config.sortAtoms = false;
+    this.config.simpleBondColors = false;
+    this.config.scenePreset = "custom";
+    this.write();
+    this.handlers.onConfigure();
+  }
+
+  isRenderKey(key) {
+    return [
+      "showDiagnostics",
+      "showWindField",
+      "showCollisionDebug",
+      "showSurfaces",
+      "surfaceRenderer",
+      "showSurfaceEdges",
+      "surfaceSide",
+      "surfaceStyle",
+      "mirrorBackTexture",
+      "flipBackTexture",
+      "surfaceOpacity",
+      "surfaceLighting",
+      "surfaceLightingModel",
+      "surfaceFabricEnabled",
+      "fabricWeaveStrength",
+      "surfaceFoldShadingEnabled",
+      "foldShadingStrength",
+      "sunAzimuth",
+      "sunElevation",
+      "sunIntensity",
+      "sunAmbient",
+      "atomDepthShading",
+      "energyUpdateRate",
+      "showAtoms",
+      "showBonds",
+      "fastLargeGridAtoms",
+      "sortBonds",
+      "sortAtoms",
+      "simpleBondColors",
+    ].includes(key);
   }
 
   loadSurfaceTexture(side, file) {
@@ -269,6 +616,49 @@ window.Atoms.ControlPanel = class ControlPanel {
       }
     }
     this.updateSurfaceTextureLabels();
+    this.updatePresetSelects();
+    this.updateValueReadouts();
+    this.updateContextVisibility();
+    this.updateHints();
+  }
+
+  updatePresetSelects() {
+    this.setOptionalSelectValue("collisionPresetInput", this.matchCollisionPreset());
+    this.setOptionalSelectValue("renderPresetInput", this.matchRenderPreset());
+  }
+
+  matchCollisionPreset() {
+    if (!this.config.collisionEnabled) {
+      return "off";
+    }
+    if (
+      this.config.collisionRadiusScale === 1.35
+      && this.config.collisionStiffness === 0.45
+      && this.config.collisionPasses === 2
+    ) {
+      return "cloth";
+    }
+    if (
+      this.config.collisionRadiusScale === 1.5
+      && this.config.collisionStiffness === 0.6
+      && this.config.collisionPasses === 4
+    ) {
+      return "robust";
+    }
+    return "custom";
+  }
+
+  matchRenderPreset() {
+    if (this.config.showDiagnostics || this.config.showSurfaceEdges || this.config.showCollisionDebug) {
+      return "debug";
+    }
+    if (this.config.showSurfaces && !this.config.showAtoms && !this.config.showBonds) {
+      return "cloth";
+    }
+    if (!this.config.showSurfaces && this.config.showAtoms && this.config.showBonds) {
+      return "atoms";
+    }
+    return "custom";
   }
 
   read() {

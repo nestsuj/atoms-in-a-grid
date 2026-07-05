@@ -174,6 +174,17 @@ body {
   padding-right: 2px;
 }
 
+.ui-hint {
+  margin-bottom: 8px;
+  border: 1px solid rgb(78 205 196 / 36%);
+  border-radius: 6px;
+  padding: 8px 9px;
+  background: rgb(78 205 196 / 9%);
+  color: #c9f6f1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 h1 {
   margin: 0;
   font-size: 18px;
@@ -184,6 +195,10 @@ h1 {
 .control-grid {
   display: grid;
   gap: 10px;
+}
+
+.is-hidden {
+  display: none !important;
 }
 
 .panel-section {
@@ -223,6 +238,18 @@ label span {
   color: #8490a1;
   font-size: 11px;
   line-height: 1.35;
+}
+
+.control-value {
+  justify-self: start;
+  min-height: 18px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: rgb(255 255 255 / 5%);
+  color: #cfd8e5;
+  font-size: 11px;
+  line-height: 1.25;
 }
 
 .checkbox-control {
@@ -282,6 +309,20 @@ button {
 
 button:hover {
   background: var(--button-hover);
+}
+
+.section-action-button {
+  min-height: 30px;
+  justify-self: start;
+  padding: 0 10px;
+  color: #d8f5f2;
+  font-size: 12px;
+  background: rgb(78 205 196 / 10%);
+  border-color: rgb(78 205 196 / 35%);
+}
+
+.section-action-button:hover {
+  background: rgb(78 205 196 / 18%);
 }
 
 .actions {

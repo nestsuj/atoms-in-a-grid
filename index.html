@@ -27,6 +27,8 @@
       </div>
 
       <div class="panel__body">
+        <div id="uiHint" class="ui-hint" role="status" aria-live="polite" hidden></div>
+
         <details class="panel-section help" open>
           <summary>Interaction</summary>
           <p>Left-drag an atom to deform the lattice. Shift-click an atom to add or remove a fixed point. Shift-drag a fixed point to move it. Right-drag or middle-drag to rotate, including while an atom is being dragged. Use W/A/S/D to pan and the mouse wheel to zoom.</p>
@@ -89,6 +91,7 @@
               </select>
               <span>Physics-only material bundle. It updates the sliders and changes how the grid moves.</span>
             </label>
+            <button id="resetMaterialButton" class="section-action-button" type="button">Reset material sliders</button>
             <label>
               Physics mode
               <select id="physicsModeInput">
@@ -174,6 +177,17 @@
               <input id="collisionPassesInput" type="number" min="1" max="6" step="1">
               <span>Repeated collision solve passes per physics substep. More catches overlaps better and costs more.</span>
             </label>
+            <label>
+              Collision preset
+              <select id="collisionPresetInput">
+                <option value="custom">Custom</option>
+                <option value="off">Off</option>
+                <option value="cloth">Cloth</option>
+                <option value="robust">Robust cloth</option>
+              </select>
+              <span>Quick bundles for self-collision cost and strength.</span>
+            </label>
+            <button id="resetCollisionButton" class="section-action-button" type="button">Reset collision</button>
             <label class="checkbox-control">
               <input id="allowCornerPinEditingInput" type="checkbox">
               <span class="checkbox-text">
@@ -233,6 +247,7 @@
               </select>
               <span>Environment bundle for wind only. Materials still control how strongly the lattice catches air.</span>
             </label>
+            <button id="resetWindButton" class="section-action-button" type="button">Reset wind profile</button>
             <label class="checkbox-control">
               <input id="windEnabledInput" type="checkbox">
               <span class="checkbox-text">
@@ -293,6 +308,17 @@
         <details class="panel-section" open>
           <summary>Display</summary>
           <p>Tubes show bond strain: warm means stretched, cool means compressed. Atoms show accumulated local energy more softly.</p>
+          <label>
+            Render preset
+            <select id="renderPresetInput">
+              <option value="custom">Custom</option>
+              <option value="atoms">Atoms and tubes</option>
+              <option value="cloth">Clean cloth</option>
+              <option value="debug">Debug overlays</option>
+            </select>
+            <span>Quick display bundles for the current kind of scene.</span>
+          </label>
+          <button id="resetRenderingButton" class="section-action-button" type="button">Reset rendering for scene</button>
           <label class="checkbox-control">
             <input id="showDiagnosticsInput" type="checkbox">
             <span class="checkbox-text">
@@ -508,26 +534,26 @@
     </aside>
   </main>
 
-  <script src="./src/config.js?v=20260705aa"></script>
-  <script src="./src/math/vec3.js?v=20260705aa"></script>
-  <script src="./src/math/camera.js?v=20260705aa"></script>
-  <script src="./src/math/projection.js?v=20260705aa"></script>
-  <script src="./src/simulation/Atom.js?v=20260705aa"></script>
-  <script src="./src/simulation/Bond.js?v=20260705aa"></script>
-  <script src="./src/simulation/BendingConstraint.js?v=20260705aa"></script>
-  <script src="./src/simulation/Lattice.js?v=20260705aa"></script>
-  <script src="./src/simulation/WindField.js?v=20260705aa"></script>
-  <script src="./src/simulation/VerletSolver.js?v=20260705aa"></script>
-  <script src="./src/simulation/EnergyModel.js?v=20260705aa"></script>
-  <script src="./src/simulation/Diagnostics.js?v=20260705aa"></script>
-  <script src="./src/rendering/DrawStyle.js?v=20260705aa"></script>
-  <script src="./src/rendering/WebGLSurfaceRenderer.js?v=20260705aa"></script>
-  <script src="./src/rendering/CanvasRenderer.js?v=20260705aa"></script>
-  <script src="./src/input/PointerController.js?v=20260705aa"></script>
-  <script src="./src/input/OrbitController.js?v=20260705aa"></script>
-  <script src="./src/input/DragController.js?v=20260705aa"></script>
-  <script src="./src/input/PinEditController.js?v=20260705aa"></script>
-  <script src="./src/ui/ControlPanel.js?v=20260705aa"></script>
-  <script src="./src/main.js?v=20260705aa"></script>
+  <script src="./src/config.js?v=20260705ab"></script>
+  <script src="./src/math/vec3.js?v=20260705ab"></script>
+  <script src="./src/math/camera.js?v=20260705ab"></script>
+  <script src="./src/math/projection.js?v=20260705ab"></script>
+  <script src="./src/simulation/Atom.js?v=20260705ab"></script>
+  <script src="./src/simulation/Bond.js?v=20260705ab"></script>
+  <script src="./src/simulation/BendingConstraint.js?v=20260705ab"></script>
+  <script src="./src/simulation/Lattice.js?v=20260705ab"></script>
+  <script src="./src/simulation/WindField.js?v=20260705ab"></script>
+  <script src="./src/simulation/VerletSolver.js?v=20260705ab"></script>
+  <script src="./src/simulation/EnergyModel.js?v=20260705ab"></script>
+  <script src="./src/simulation/Diagnostics.js?v=20260705ab"></script>
+  <script src="./src/rendering/DrawStyle.js?v=20260705ab"></script>
+  <script src="./src/rendering/WebGLSurfaceRenderer.js?v=20260705ab"></script>
+  <script src="./src/rendering/CanvasRenderer.js?v=20260705ab"></script>
+  <script src="./src/input/PointerController.js?v=20260705ab"></script>
+  <script src="./src/input/OrbitController.js?v=20260705ab"></script>
+  <script src="./src/input/DragController.js?v=20260705ab"></script>
+  <script src="./src/input/PinEditController.js?v=20260705ab"></script>
+  <script src="./src/ui/ControlPanel.js?v=20260705ab"></script>
+  <script src="./src/main.js?v=20260705ab"></script>
 </body>
 </html>
