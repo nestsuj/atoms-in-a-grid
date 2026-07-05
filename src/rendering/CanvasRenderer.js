@@ -42,6 +42,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     const height = this.canvas.height / this.pixelRatio;
     const ctx = this.ctx;
     const webglSurfaces = this.config.surfaceRenderer === "webgl" && this.config.webglSurfaceAvailable;
+    const webglPrimary = webglSurfaces;
     ctx.clearRect(0, 0, width, height);
     if (!webglSurfaces) {
       this.drawBackground(ctx, width, height);
@@ -75,7 +76,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     }
 
     ctx.lineCap = "round";
-    if (this.config.showBonds) {
+    if (this.config.showBonds && !webglPrimary) {
       for (const entry of bondEntries) {
         const depthShade = (entry.depth - minDepth) / depthRange;
         this.drawBond(ctx, entry, depthShade);
@@ -87,7 +88,7 @@ window.Atoms.CanvasRenderer = class CanvasRenderer {
     if (this.config.sortAtoms) {
       projectedAtoms.sort((a, b) => a.screen.depth - b.screen.depth);
     }
-    if (this.config.showAtoms) {
+    if (this.config.showAtoms && !webglPrimary) {
       const simpleAtoms = this.config.fastLargeGridAtoms && lattice.atoms.length > 1200;
       for (const entry of projectedAtoms) {
         const rawDepthShade = (entry.screen.depth - minDepth) / depthRange;

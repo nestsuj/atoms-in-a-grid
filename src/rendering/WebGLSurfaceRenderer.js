@@ -15,6 +15,13 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     this.colors = [];
     this.textureSides = [];
     this.edgePositions = [];
+    this.edgeColors = [];
+    this.bondPositions = [];
+    this.bondColors = [];
+    this.atomPositions = [];
+    this.atomColors = [];
+    this.atomSizes = [];
+    this.atomModes = [];
     this.frontTexture = null;
     this.frontTextureImage = null;
     this.backTexture = null;
@@ -34,6 +41,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     const gl = this.gl;
     this.program = this.createProgram(this.vertexShaderSource(), this.fragmentShaderSource());
     this.lineProgram = this.createProgram(this.lineVertexShaderSource(), this.lineFragmentShaderSource());
+    this.atomProgram = this.createProgram(this.atomVertexShaderSource(), this.atomFragmentShaderSource());
     this.locations = {
       position: gl.getAttribLocation(this.program, "a_position"),
       normal: gl.getAttribLocation(this.program, "a_normal"),
@@ -52,8 +60,15 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     };
     this.lineLocations = {
       position: gl.getAttribLocation(this.lineProgram, "a_position"),
+      color: gl.getAttribLocation(this.lineProgram, "a_color"),
       matrix: gl.getUniformLocation(this.lineProgram, "u_matrix"),
-      color: gl.getUniformLocation(this.lineProgram, "u_color"),
+    };
+    this.atomLocations = {
+      position: gl.getAttribLocation(this.atomProgram, "a_position"),
+      color: gl.getAttribLocation(this.atomProgram, "a_color"),
+      size: gl.getAttribLocation(this.atomProgram, "a_size"),
+      mode: gl.getAttribLocation(this.atomProgram, "a_mode"),
+      matrix: gl.getUniformLocation(this.atomProgram, "u_matrix"),
     };
     this.positionBuffer = gl.createBuffer();
     this.normalBuffer = gl.createBuffer();
@@ -61,6 +76,13 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     this.colorBuffer = gl.createBuffer();
     this.textureSideBuffer = gl.createBuffer();
     this.edgeBuffer = gl.createBuffer();
+    this.edgeColorBuffer = gl.createBuffer();
+    this.bondBuffer = gl.createBuffer();
+    this.bondColorBuffer = gl.createBuffer();
+    this.atomBuffer = gl.createBuffer();
+    this.atomColorBuffer = gl.createBuffer();
+    this.atomSizeBuffer = gl.createBuffer();
+    this.atomModeBuffer = gl.createBuffer();
     this.whiteTexture = this.createSolidTexture(255, 255, 255, 255);
 
     gl.enable(gl.DEPTH_TEST);
@@ -111,14 +133,21 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     gl.clearColor(0.082, 0.098, 0.133, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    if (!this.config.showSurfaces || this.config.surfaceOpacity <= 0) {
-      return true;
+    if (this.config.showSurfaces && this.config.surfaceOpacity > 0) {
+      this.drawSurfaces(lattice, camera);
     }
 
+    this.drawBonds(lattice, camera);
+    this.drawAtoms(lattice, camera);
+    return true;
+  }
+
+  drawSurfaces(lattice, camera) {
+    const gl = this.gl;
     this.prepareTexture();
     const count = this.buildSurfaceGeometry(lattice);
     if (count === 0) {
-      return true;
+      return;
     }
 
     gl.useProgram(this.program);
@@ -150,8 +179,6 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     if (this.config.showSurfaceEdges) {
       this.drawSurfaceEdges(this.lastPanels || [], camera);
     }
-
-    return true;
   }
 
   buildSurfaceGeometry(lattice) {
@@ -182,8 +209,8 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     const gl = this.gl;
     gl.useProgram(this.lineProgram);
     this.bindAttribute(this.edgeBuffer, this.edgePositions, this.lineLocations.position, 3);
+    this.bindAttribute(this.edgeColorBuffer, this.edgeColors, this.lineLocations.color, 4);
     gl.uniformMatrix4fv(this.lineLocations.matrix, false, this.cameraMatrix(camera));
-    gl.uniform4f(this.lineLocations.color, 0.82, 0.94, 0.98, 0.38);
     gl.depthMask(false);
     gl.drawArrays(gl.LINES, 0, count);
     gl.depthMask(true);
@@ -191,6 +218,7 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
 
   buildSurfaceEdges(panels) {
     this.edgePositions.length = 0;
+    this.edgeColors.length = 0;
 
     for (const panel of panels) {
       this.pushEdge(panel.a, panel.b);
@@ -208,6 +236,95 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
       a.position.x, a.position.y, a.position.z,
       b.position.x, b.position.y, b.position.z,
     );
+    this.edgeColors.push(0.82, 0.94, 0.98, 0.38, 0.82, 0.94, 0.98, 0.38);
+  }
+
+  drawBonds(lattice, camera) {
+    if (!this.config.showBonds) {
+      return;
+    }
+
+    const count = this.buildBondGeometry(lattice, camera);
+    if (count === 0) {
+      return;
+    }
+
+    const gl = this.gl;
+    gl.useProgram(this.lineProgram);
+    this.bindAttribute(this.bondBuffer, this.bondPositions, this.lineLocations.position, 3);
+    this.bindAttribute(this.bondColorBuffer, this.bondColors, this.lineLocations.color, 4);
+    gl.uniformMatrix4fv(this.lineLocations.matrix, false, this.cameraMatrix(camera));
+    gl.lineWidth(1);
+    gl.drawArrays(gl.LINES, 0, count);
+  }
+
+  buildBondGeometry(lattice, camera) {
+    this.bondPositions.length = 0;
+    this.bondColors.length = 0;
+    const depthRange = this.depthRange(lattice.atoms, camera);
+
+    for (const bond of lattice.bonds) {
+      const a = bond.a.position;
+      const b = bond.b.position;
+      const depth = (this.depthOf(a, camera) + this.depthOf(b, camera)) * 0.5;
+      const depthShade = (depth - depthRange.min) / depthRange.range;
+      const strain = this.config.simpleBondColors ? 0 : (window.Atoms.distance(a, b) - bond.restLength) / bond.restLength;
+      const color = this.config.simpleBondColors
+        ? this.neutralBondColor(depthShade)
+        : this.bondColor(depthShade, strain);
+
+      this.bondPositions.push(a.x, a.y, a.z, b.x, b.y, b.z);
+      this.bondColors.push(color.r, color.g, color.b, color.a, color.r, color.g, color.b, color.a);
+    }
+
+    return this.bondPositions.length / 3;
+  }
+
+  drawAtoms(lattice, camera) {
+    if (!this.config.showAtoms) {
+      return;
+    }
+
+    const count = this.buildAtomGeometry(lattice, camera);
+    if (count === 0) {
+      return;
+    }
+
+    const gl = this.gl;
+    gl.useProgram(this.atomProgram);
+    this.bindAttribute(this.atomBuffer, this.atomPositions, this.atomLocations.position, 3);
+    this.bindAttribute(this.atomColorBuffer, this.atomColors, this.atomLocations.color, 4);
+    this.bindAttribute(this.atomSizeBuffer, this.atomSizes, this.atomLocations.size, 1);
+    this.bindAttribute(this.atomModeBuffer, this.atomModes, this.atomLocations.mode, 1);
+    gl.uniformMatrix4fv(this.atomLocations.matrix, false, this.cameraMatrix(camera));
+    gl.drawArrays(gl.POINTS, 0, count);
+  }
+
+  buildAtomGeometry(lattice, camera) {
+    this.atomPositions.length = 0;
+    this.atomColors.length = 0;
+    this.atomSizes.length = 0;
+    this.atomModes.length = 0;
+    const depthRange = this.depthRange(lattice.atoms, camera);
+    const pixelRatio = this.pixelRatio || 1;
+    const fastAtoms = this.config.fastLargeGridAtoms && lattice.atoms.length > 1200;
+
+    for (const atom of lattice.atoms) {
+      const depthShadeRaw = (this.depthOf(atom.position, camera) - depthRange.min) / depthRange.range;
+      const depthShade = 0.5 + (depthShadeRaw - 0.5) * this.config.atomDepthShading;
+      const color = atom.selected
+        ? { r: 1, g: 0.88, b: 0.51, a: 1 }
+        : this.atomColor(atom, depthShade);
+      const radius = this.config.atomRadius * (0.78 + depthShade * 0.46) * this.config.zoomVisualScale;
+      const outlineBoost = atom.fixed || atom.selected ? 1.28 : 1;
+
+      this.atomPositions.push(atom.position.x, atom.position.y, atom.position.z);
+      this.atomColors.push(color.r, color.g, color.b, color.a);
+      this.atomSizes.push(Math.max(2, radius * 2 * pixelRatio * outlineBoost));
+      this.atomModes.push(fastAtoms ? 1 : 0);
+    }
+
+    return this.atomPositions.length / 3;
   }
 
   filteredPanels(panels) {
@@ -389,6 +506,79 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
     }
 
     return { x: nx / length, y: ny / length, z: nz / length };
+  }
+
+  depthRange(atoms, camera) {
+    let min = Infinity;
+    let max = -Infinity;
+
+    for (const atom of atoms) {
+      const depth = this.depthOf(atom.position, camera);
+      if (depth < min) min = depth;
+      if (depth > max) max = depth;
+    }
+
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      return { min: 0, max: 1, range: 1 };
+    }
+
+    return { min, max, range: Math.max(1, max - min) };
+  }
+
+  depthOf(position, camera) {
+    const forward = camera.getBasis().forward;
+    return position.x * forward.x + position.y * forward.y + position.z * forward.z;
+  }
+
+  atomColor(atom, depthShade) {
+    const energy = window.Atoms.clamp(atom.energy * 0.62, 0, 1);
+    const shade = 0.62 + depthShade * 0.38;
+    const cool = {
+      r: (44 + depthShade * 66) / 255,
+      g: (128 + depthShade * 84) / 255,
+      b: (154 + depthShade * 79) / 255,
+    };
+    const hot = {
+      r: shade,
+      g: (102 * shade) / 255,
+      b: (70 * shade) / 255,
+    };
+
+    return {
+      r: cool.r + (hot.r - cool.r) * energy,
+      g: cool.g + (hot.g - cool.g) * energy,
+      b: cool.b + (hot.b - cool.b) * energy,
+      a: 1,
+    };
+  }
+
+  bondColor(depthShade, strain) {
+    const rawAmount = window.Atoms.clamp(Math.abs(strain) * 2.2, 0, 1);
+    const amount = rawAmount * rawAmount * (3 - 2 * rawAmount);
+    const neutral = {
+      r: (126 + depthShade * 42) / 255,
+      g: (139 + depthShade * 42) / 255,
+      b: (156 + depthShade * 42) / 255,
+    };
+    const target = strain >= 0
+      ? { r: 1, g: 103 / 255, b: 71 / 255 }
+      : { r: 69 / 255, g: 199 / 255, b: 232 / 255 };
+    return {
+      r: neutral.r + (target.r - neutral.r) * amount,
+      g: neutral.g + (target.g - neutral.g) * amount,
+      b: neutral.b + (target.b - neutral.b) * amount,
+      a: 0.28 + depthShade * 0.24 + amount * 0.34,
+    };
+  }
+
+  neutralBondColor(depthShade) {
+    const value = (126 + depthShade * 42) / 255;
+    return {
+      r: value,
+      g: value + 13 / 255,
+      b: value + 30 / 255,
+      a: 0.28 + depthShade * 0.24,
+    };
   }
 
   cameraMatrix(camera) {
@@ -577,9 +767,12 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
   lineVertexShaderSource() {
     return `
       attribute vec3 a_position;
+      attribute vec4 a_color;
       uniform mat4 u_matrix;
+      varying vec4 v_color;
       void main() {
         gl_Position = u_matrix * vec4(a_position, 1.0);
+        v_color = a_color;
       }
     `;
   }
@@ -587,9 +780,60 @@ window.Atoms.WebGLSurfaceRenderer = class WebGLSurfaceRenderer {
   lineFragmentShaderSource() {
     return `
       precision mediump float;
-      uniform vec4 u_color;
+      varying vec4 v_color;
       void main() {
-        gl_FragColor = u_color;
+        gl_FragColor = v_color;
+      }
+    `;
+  }
+
+  atomVertexShaderSource() {
+    return `
+      attribute vec3 a_position;
+      attribute vec4 a_color;
+      attribute float a_size;
+      attribute float a_mode;
+      uniform mat4 u_matrix;
+      varying vec4 v_color;
+      varying float v_mode;
+      void main() {
+        gl_Position = u_matrix * vec4(a_position, 1.0);
+        gl_PointSize = a_size;
+        v_color = a_color;
+        v_mode = a_mode;
+      }
+    `;
+  }
+
+  atomFragmentShaderSource() {
+    return `
+      precision mediump float;
+      varying vec4 v_color;
+      varying float v_mode;
+      void main() {
+        vec2 centered = gl_PointCoord * 2.0 - 1.0;
+        float distanceFromCenter = dot(centered, centered);
+        if (distanceFromCenter > 1.0) {
+          discard;
+        }
+
+        if (v_mode > 0.5) {
+          float edgeAlpha = 1.0 - smoothstep(0.86, 1.0, distanceFromCenter);
+          gl_FragColor = vec4(v_color.rgb, v_color.a * edgeAlpha);
+          return;
+        }
+
+        vec3 normal = normalize(vec3(centered.x, -centered.y, sqrt(max(0.0, 1.0 - distanceFromCenter))));
+        vec3 light = normalize(vec3(-0.42, 0.58, 0.7));
+        vec3 view = vec3(0.0, 0.0, 1.0);
+        float diffuse = max(dot(normal, light), 0.0);
+        float specular = pow(max(dot(reflect(-light, normal), view), 0.0), 24.0);
+        float rim = smoothstep(0.62, 0.98, distanceFromCenter);
+        float edgeAlpha = 1.0 - smoothstep(0.92, 1.0, distanceFromCenter);
+        vec3 shaded = v_color.rgb * (0.34 + diffuse * 0.78);
+        shaded = mix(shaded, vec3(0.02, 0.04, 0.06), rim * 0.34);
+        shaded += vec3(1.0, 0.96, 0.86) * specular * 0.42;
+        gl_FragColor = vec4(shaded, v_color.a * edgeAlpha);
       }
     `;
   }
