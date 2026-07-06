@@ -67,7 +67,7 @@ window.Atoms.DragController = class DragController {
 
   syncAfterCameraChange() {
     if (!this.atom) return;
-    this.solver.movePin(this.atom, window.Atoms.screenToWorldOnDepth(this.pointer, this.depth, this.camera));
+    this.solver.movePin(this.atom, window.Atoms.screenToWorldOnDepth(this.pointer, this.depth, this.camera), { immediate: true });
   }
 
   end() {

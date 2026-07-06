@@ -22,6 +22,15 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.dragStrength = config.dragStrength;
     this.mouseStiffness = config.mouseStiffness;
     this.mouseDamping = config.mouseDamping;
+    this.mouseMaxForce = window.Atoms.readNumber(config.mouseMaxForce, 90, 0, 500);
+    this.dragMaxStepScale = window.Atoms.readNumber(config.dragMaxStepScale, 1.15, 0.1, 5);
+    this.dragMaxSubsteps = Math.round(window.Atoms.readNumber(config.dragMaxSubsteps, 18, 1, 48));
+    this.strainLimitEnabled = config.strainLimitEnabled !== false;
+    this.maxStretchFactor = window.Atoms.readNumber(config.maxStretchFactor, 1.75, 1, 4);
+    this.minStretchFactor = window.Atoms.readNumber(config.minStretchFactor, 0.35, 0.05, 1);
+    this.strainLimitStiffness = window.Atoms.readNumber(config.strainLimitStiffness, 0.85, 0, 1);
+    this.panelAreaMinFactor = window.Atoms.readNumber(config.panelAreaMinFactor, 0.16, 0, 1);
+    this.panelAreaStiffness = window.Atoms.readNumber(config.panelAreaStiffness, 0.25, 0, 1);
     this.collisionEnabled = config.collisionEnabled;
     this.collisionRadiusScale = config.collisionRadiusScale;
     this.collisionStiffness = config.collisionStiffness;
@@ -47,6 +56,7 @@ window.Atoms.VerletSolver = class VerletSolver {
     this.externalForcePipeline = this.createExternalForcePipeline();
     this.springForcePipeline = this.createSpringForcePipeline();
     this.constraintPipeline = this.createConstraintPipeline();
+    this.safetyPipeline = this.createSafetyPipeline();
     this.collisionPipeline = this.createCollisionPipeline();
     this.lockConstraint = new window.Atoms.LockConstraintSolver();
   }
@@ -94,6 +104,18 @@ window.Atoms.VerletSolver = class VerletSolver {
     ];
   }
 
+  createSafetyPipeline() {
+    return [
+      new window.Atoms.StrainLimitConstraintSolver(
+        (world) => world.lattice.bonds,
+      ),
+      new window.Atoms.StrainLimitConstraintSolver(
+        (world) => world.lattice.shearSprings,
+      ),
+      new window.Atoms.ClothPanelAreaConstraintSolver(),
+    ];
+  }
+
   createCollisionPipeline() {
     return [
       new window.Atoms.ParticleCollisionSolver(),
@@ -125,6 +147,7 @@ window.Atoms.VerletSolver = class VerletSolver {
       atom,
       current: window.Atoms.clone(position),
       previous: window.Atoms.clone(position),
+      goal: window.Atoms.clone(position),
       velocity: window.Atoms.vec3(),
     });
     atom.selected = true;
@@ -134,20 +157,21 @@ window.Atoms.VerletSolver = class VerletSolver {
     }
   }
 
-  movePin(atom, position) {
+  movePin(atom, position, options = {}) {
     const pin = this.pinned.get(atom.id);
     if (!pin) {
       this.pin(atom, position);
       return;
     }
 
-    window.Atoms.copy(pin.previous, pin.current);
-    window.Atoms.copy(pin.current, position);
-    pin.velocity.x = pin.current.x - pin.previous.x;
-    pin.velocity.y = pin.current.y - pin.previous.y;
-    pin.velocity.z = pin.current.z - pin.previous.z;
-    if (this.isHardGrab()) {
-      window.Atoms.copy(atom.position, position);
+    window.Atoms.copy(pin.goal, position);
+
+    if (options.immediate) {
+      window.Atoms.copy(pin.previous, position);
+      window.Atoms.copy(pin.current, position);
+      pin.velocity.x = 0;
+      pin.velocity.y = 0;
+      pin.velocity.z = 0;
     }
   }
 
@@ -169,6 +193,8 @@ window.Atoms.VerletSolver = class VerletSolver {
   }
 
   step(lattice, time = 0) {
+    this.currentRestLength = Math.max(1, lattice.restLength || 1);
+
     if (window.Atoms.SolverMode.isForce(this.physicsMode)) {
       this.stepSpringForces(lattice, time);
       return;
@@ -185,10 +211,12 @@ window.Atoms.VerletSolver = class VerletSolver {
 
     for (let i = 0; i < substeps; i += 1) {
       const world = this.world.bind(lattice, this, time, dt);
+      this.advancePins(dt);
       world.clearForces();
       this.applyForcePipeline(world);
       this.integrateForces(lattice, substepDamping, world.dtSquared);
       this.solveCollisions(lattice);
+      this.applySafetyPipeline(world);
       this.solveLocks(world);
     }
   }
@@ -211,6 +239,12 @@ window.Atoms.VerletSolver = class VerletSolver {
     }
   }
 
+  applySafetyPipeline(world) {
+    for (const constraint of this.safetyPipeline) {
+      constraint.solve(world);
+    }
+  }
+
   solveLocks(world) {
     this.lockConstraint.solve(world);
   }
@@ -224,55 +258,117 @@ window.Atoms.VerletSolver = class VerletSolver {
   springSubsteps() {
     const baseSubsteps = Math.max(1, this.iterations);
     const lightMassMultiplier = Math.ceil(Math.sqrt(1 / this.mass));
-    return Math.min(48, baseSubsteps * Math.max(1, lightMassMultiplier));
+    return this.adaptiveSubsteps(baseSubsteps * Math.max(1, lightMassMultiplier));
+  }
+
+  positionSubsteps() {
+    return this.adaptiveSubsteps(1);
+  }
+
+  adaptiveSubsteps(baseSubsteps) {
+    if (this.pinned.size === 0) {
+      return Math.min(48, baseSubsteps);
+    }
+
+    const restLength = Math.max(1, this.currentRestLength || 1);
+    const maxPending = this.maxPendingPinDistance();
+    const targetStep = Math.max(1, restLength * 0.35);
+    const dragSubsteps = Math.ceil(Math.min(maxPending, restLength * 3) / targetStep);
+    return Math.min(48, Math.max(baseSubsteps, Math.min(this.dragMaxSubsteps, dragSubsteps)));
+  }
+
+  maxPendingPinDistance() {
+    let maxDistance = 0;
+
+    for (const pin of this.pinned.values()) {
+      maxDistance = Math.max(maxDistance, window.Atoms.distance(pin.current, pin.goal));
+    }
+
+    return maxDistance;
+  }
+
+  advancePins(stepFraction) {
+    const restLength = Math.max(1, this.currentRestLength || 1);
+    const maxStep = Math.max(0.001, restLength * this.dragMaxStepScale * stepFraction);
+
+    for (const pin of this.pinned.values()) {
+      window.Atoms.copy(pin.previous, pin.current);
+
+      const deltaX = pin.goal.x - pin.current.x;
+      const deltaY = pin.goal.y - pin.current.y;
+      const deltaZ = pin.goal.z - pin.current.z;
+      const distance = Math.hypot(deltaX, deltaY, deltaZ);
+
+      if (distance <= maxStep) {
+        window.Atoms.copy(pin.current, pin.goal);
+      } else {
+        const scale = maxStep / distance;
+        pin.current.x += deltaX * scale;
+        pin.current.y += deltaY * scale;
+        pin.current.z += deltaZ * scale;
+      }
+
+      pin.velocity.x = pin.current.x - pin.previous.x;
+      pin.velocity.y = pin.current.y - pin.previous.y;
+      pin.velocity.z = pin.current.z - pin.previous.z;
+    }
   }
 
   stepConstraints(lattice, time) {
+    const substeps = this.positionSubsteps();
+    const dt = 1 / substeps;
+    const substepDamping = Math.pow(this.damping, dt);
     this.collisionStats = this.emptyCollisionStats();
-    const world = this.world.bind(lattice, this, time, 1);
 
-    world.clearForces();
-    this.applyExternalForcePipeline(world);
-    for (const atom of lattice.atoms) {
-      const pinned = this.pinned.get(atom.id);
-      if (atom.fixed) {
-        window.Atoms.copy(atom.position, atom.fixedPosition);
-        window.Atoms.copy(atom.previousPosition, atom.fixedPosition);
-      } else if (pinned && this.isHardGrab()) {
-        window.Atoms.copy(atom.position, pinned.current);
-        atom.previousPosition.x = pinned.current.x - pinned.velocity.x;
-        atom.previousPosition.y = pinned.current.y - pinned.velocity.y;
-        atom.previousPosition.z = pinned.current.z - pinned.velocity.z;
-        pinned.velocity.x *= 0.86;
-        pinned.velocity.y *= 0.86;
-        pinned.velocity.z *= 0.86;
-      } else {
-        const x = atom.position.x;
-        const y = atom.position.y;
-        const z = atom.position.z;
-        atom.position.x += (atom.position.x - atom.previousPosition.x) * this.damping + atom.force.x * this.inverseMass;
-        atom.position.y += (atom.position.y - atom.previousPosition.y) * this.damping + atom.force.y * this.inverseMass;
-        atom.position.z += (atom.position.z - atom.previousPosition.z) * this.damping + atom.force.z * this.inverseMass;
-        atom.previousPosition.x = x;
-        atom.previousPosition.y = y;
-        atom.previousPosition.z = z;
+    for (let step = 0; step < substeps; step += 1) {
+      const world = this.world.bind(lattice, this, time, dt);
+      this.advancePins(dt);
 
-        if (pinned) {
-          atom.position.x += (pinned.current.x - atom.position.x) * this.dragStrength;
-          atom.position.y += (pinned.current.y - atom.position.y) * this.dragStrength;
-          atom.position.z += (pinned.current.z - atom.position.z) * this.dragStrength;
+      world.clearForces();
+      this.applyExternalForcePipeline(world);
+      for (const atom of lattice.atoms) {
+        const pinned = this.pinned.get(atom.id);
+        if (atom.fixed) {
+          window.Atoms.copy(atom.position, atom.fixedPosition);
+          window.Atoms.copy(atom.previousPosition, atom.fixedPosition);
+        } else if (pinned && this.isHardGrab()) {
+          window.Atoms.copy(atom.position, pinned.current);
+          atom.previousPosition.x = pinned.current.x - pinned.velocity.x;
+          atom.previousPosition.y = pinned.current.y - pinned.velocity.y;
+          atom.previousPosition.z = pinned.current.z - pinned.velocity.z;
           pinned.velocity.x *= 0.86;
           pinned.velocity.y *= 0.86;
           pinned.velocity.z *= 0.86;
+        } else {
+          const x = atom.position.x;
+          const y = atom.position.y;
+          const z = atom.position.z;
+          atom.position.x += (atom.position.x - atom.previousPosition.x) * substepDamping + atom.force.x * this.inverseMass * world.dtSquared;
+          atom.position.y += (atom.position.y - atom.previousPosition.y) * substepDamping + atom.force.y * this.inverseMass * world.dtSquared;
+          atom.position.z += (atom.position.z - atom.previousPosition.z) * substepDamping + atom.force.z * this.inverseMass * world.dtSquared;
+          atom.previousPosition.x = x;
+          atom.previousPosition.y = y;
+          atom.previousPosition.z = z;
+
+          if (pinned) {
+            atom.position.x += (pinned.current.x - atom.position.x) * this.dragStrength;
+            atom.position.y += (pinned.current.y - atom.position.y) * this.dragStrength;
+            atom.position.z += (pinned.current.z - atom.position.z) * this.dragStrength;
+            pinned.velocity.x *= 0.86;
+            pinned.velocity.y *= 0.86;
+            pinned.velocity.z *= 0.86;
+          }
         }
       }
-    }
 
-    for (let i = 0; i < this.iterations; i += 1) {
-      const world = this.world.bind(lattice, this, time, 1);
-      this.applyConstraintPipeline(world, i);
-      this.solveCollisions(lattice);
-      this.solveLocks(world);
+      const passes = Math.max(1, Math.ceil(this.iterations / substeps));
+      for (let i = 0; i < passes; i += 1) {
+        const constraintWorld = this.world.bind(lattice, this, time, dt);
+        this.applyConstraintPipeline(constraintWorld, i);
+        this.solveCollisions(lattice);
+        this.applySafetyPipeline(constraintWorld);
+        this.solveLocks(constraintWorld);
+      }
     }
   }
 

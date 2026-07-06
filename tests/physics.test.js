@@ -60,6 +60,38 @@ test("distance spring force applies equal and opposite restoring forces", () => 
   assertClose(a.force.x, -b.force.x, 0.000001, "spring forces are equal and opposite");
 });
 
+test("mouse spring force is capped during large drag jumps", () => {
+  const cfg = config({ mouseStiffness: 10, mouseDamping: 0, mouseMaxForce: 2 });
+  const solver = new Atoms.VerletSolver(cfg);
+  const atom = new Atoms.Atom(1, Atoms.vec3(0, 0, 0));
+  const lattice = { atoms: [atom] };
+  const world = worldFor(lattice, solver);
+
+  solver.pin(atom, Atoms.vec3(100, 0, 0));
+  world.clearForces();
+  new Atoms.MouseSpringForce().apply(world);
+
+  assert.ok(Math.hypot(atom.force.x, atom.force.y, atom.force.z) <= 2.000001, "mouse force is capped");
+});
+
+test("drag target movement is speed limited and requests adaptive substeps", () => {
+  const cfg = config({ dragMaxStepScale: 0.5, dragMaxSubsteps: 12 });
+  const solver = new Atoms.VerletSolver(cfg);
+  const atom = new Atoms.Atom(1, Atoms.vec3(0, 0, 0));
+
+  solver.currentRestLength = 10;
+  solver.pin(atom, Atoms.vec3(0, 0, 0));
+  solver.movePin(atom, Atoms.vec3(100, 0, 0));
+
+  assert.ok(solver.adaptiveSubsteps(1) > 1, "large pending drag requests extra substeps");
+  solver.advancePins(1);
+
+  const pin = solver.pinned.get(atom.id);
+  assertClose(pin.current.x, 5, 0.000001, "pin current advances by capped step");
+  assertClose(pin.goal.x, 100, 0.000001, "pin goal preserves the cursor target");
+  assertClose(pin.velocity.x, 5, 0.000001, "pin velocity follows capped target movement");
+});
+
 test("distance constraint moves free particles toward rest length", () => {
   const cfg = config();
   const solver = new Atoms.VerletSolver(cfg);
@@ -303,6 +335,82 @@ test("cloth self-collision ignores local triangle vertices", () => {
 
   assert.strictEqual(cloth.isLocalCollision(a, a, b, c), true, "triangle vertex is local");
   assert.strictEqual(cloth.isLocalCollision(lattice.atomAt(4, 4, 0), a, b, c), false, "far vertex is not local");
+});
+
+test("cloth edge-edge collision separates crossing non-local edges", () => {
+  const cfg = config({ collisionStiffness: 1, collisionDamping: 0 });
+  const solver = new Atoms.VerletSolver(cfg);
+  const cloth = new Atoms.ClothSelfCollisionSolver();
+  const a = new Atoms.Atom(1, Atoms.vec3(-1, 0, 0));
+  const b = new Atoms.Atom(2, Atoms.vec3(1, 0, 0));
+  const c = new Atoms.Atom(3, Atoms.vec3(0, -1, 0));
+  const d = new Atoms.Atom(4, Atoms.vec3(0, 1, 0));
+  const lattice = { atoms: [a, b, c, d] };
+  const world = worldFor(lattice, solver);
+
+  solver.collisionStats = solver.emptyCollisionStats();
+  cloth.solveEdgeEdgeCollision(world, { a, b }, { a: c, b: d }, 1, 1);
+
+  const closest = cloth.closestSegmentPoints(a.position, b.position, c.position, d.position);
+  assert.ok(closest.distanceSquared > 0, "crossing edges separate");
+  assert.ok(solver.collisionStats.corrections > 0, "edge collision records a correction");
+});
+
+test("strain limit clamps over-stretched and collapsed constraints without adding velocity", () => {
+  const cfg = config({
+    maxStretchFactor: 1.5,
+    minStretchFactor: 0.5,
+    strainLimitStiffness: 1,
+  });
+  const solver = new Atoms.VerletSolver(cfg);
+  const a = new Atoms.Atom(1, Atoms.vec3(0, 0, 0));
+  const b = new Atoms.Atom(2, Atoms.vec3(30, 0, 0));
+  const bond = new Atoms.Bond(a, b, 10);
+  const lattice = { atoms: [a, b], bonds: [bond], shearSprings: [] };
+  const world = worldFor(lattice, solver);
+
+  new Atoms.StrainLimitConstraintSolver((entryWorld) => entryWorld.lattice.bonds).solve(world);
+
+  assertClose(Atoms.distance(a.position, b.position), 15, 0.000001, "over-stretched bond is clamped");
+  assertClose(world.velocity(a).x, 0, 0.000001, "a correction does not add velocity");
+  assertClose(world.velocity(b).x, 0, 0.000001, "b correction does not add velocity");
+
+  Atoms.copy(a.position, Atoms.vec3(0, 0, 0));
+  Atoms.copy(a.previousPosition, a.position);
+  Atoms.copy(b.position, Atoms.vec3(2, 0, 0));
+  Atoms.copy(b.previousPosition, b.position);
+  new Atoms.StrainLimitConstraintSolver((entryWorld) => entryWorld.lattice.bonds).solve(world);
+
+  assertClose(Atoms.distance(a.position, b.position), 5, 0.000001, "collapsed bond is expanded");
+});
+
+test("cloth panel area guard expands near-collapsed panels", () => {
+  const cfg = config({
+    width: 2,
+    height: 2,
+    depth: 1,
+    restLength: 10,
+    panelAreaMinFactor: 0.25,
+    panelAreaStiffness: 1,
+  });
+  const lattice = new Atoms.Lattice(cfg);
+  const solver = new Atoms.VerletSolver(cfg);
+  const panel = lattice.surfacePanels.find((entry) => entry.side === "front");
+  const guard = new Atoms.ClothPanelAreaConstraintSolver();
+  const world = worldFor(lattice, solver);
+
+  Atoms.copy(panel.a.position, Atoms.vec3(0, 0, 0));
+  Atoms.copy(panel.b.position, Atoms.vec3(0.1, 0, 0));
+  Atoms.copy(panel.c.position, Atoms.vec3(0.1, 0.1, 0));
+  Atoms.copy(panel.d.position, Atoms.vec3(0, 0.1, 0));
+  for (const atom of [panel.a, panel.b, panel.c, panel.d]) {
+    Atoms.copy(atom.previousPosition, atom.position);
+  }
+
+  const before = guard.panelArea(panel);
+  guard.solve(world);
+
+  assert.ok(guard.panelArea(panel) > before, "near-collapsed panel area increases");
 });
 
 test("wind panel pressure is much stronger broadside than edge-on", () => {

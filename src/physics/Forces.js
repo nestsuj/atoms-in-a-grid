@@ -80,12 +80,22 @@ window.Atoms.MouseSpringForce = class MouseSpringForce {
       }
 
       const velocity = world.velocity(atom);
-      world.addForce(
-        atom,
-        (pin.current.x - atom.position.x) * stiffness - velocity.x * damping,
-        (pin.current.y - atom.position.y) * stiffness - velocity.y * damping,
-        (pin.current.z - atom.position.z) * stiffness - velocity.z * damping,
-      );
+      let forceX = (pin.current.x - atom.position.x) * stiffness - velocity.x * damping;
+      let forceY = (pin.current.y - atom.position.y) * stiffness - velocity.y * damping;
+      let forceZ = (pin.current.z - atom.position.z) * stiffness - velocity.z * damping;
+      const maxForce = solver.mouseMaxForce;
+
+      if (maxForce > 0) {
+        const forceLength = Math.hypot(forceX, forceY, forceZ);
+        if (forceLength > maxForce) {
+          const scale = maxForce / forceLength;
+          forceX *= scale;
+          forceY *= scale;
+          forceZ *= scale;
+        }
+      }
+
+      world.addForce(atom, forceX, forceY, forceZ);
     }
   }
 };
