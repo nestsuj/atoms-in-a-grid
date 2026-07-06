@@ -14,6 +14,7 @@ const sourceFiles = [
   "src/simulation/Lattice.js",
   "src/simulation/WindField.js",
   "src/physics/PhysicsWorld.js",
+  "src/physics/SolverMode.js",
   "src/physics/Forces.js",
   "src/physics/Constraints.js",
   "src/physics/Collisions.js",

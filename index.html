@@ -95,10 +95,10 @@
             <label>
               Physics mode
               <select id="physicsModeInput">
-                <option value="spring">Spring forces</option>
-                <option value="constraint">Constraint projection</option>
+                <option value="force">Force springs</option>
+                <option value="position">Position constraints</option>
               </select>
-              <span>Spring forces are more physical; constraint projection keeps the older shape-preserving behavior.</span>
+              <span>Force springs integrate spring forces; position constraints project distances after external forces.</span>
             </label>
             <label>
               Structural stiffness
@@ -108,7 +108,7 @@
             <label>
               Shear stiffness
               <input id="shearStiffnessInput" type="range" min="0" max="1" step="0.01">
-              <span>Hidden diagonal spring strength in spring mode. Helps cloth and cells resist collapsing into diamonds.</span>
+              <span>Hidden diagonal spring strength in force mode. Helps cloth and cells resist collapsing into diamonds.</span>
             </label>
             <label>
               Spring damping
@@ -133,7 +133,7 @@
             <label>
               Atom mass
               <input id="atomMassInput" type="range" min="0.1" max="10" step="0.1">
-              <span>Mass of each free atom in spring mode. Very light atoms use smaller internal timesteps for stability.</span>
+              <span>Mass of each free atom in force mode. Very light atoms use smaller internal timesteps for stability.</span>
             </label>
             <label>
               Release energy
@@ -143,17 +143,17 @@
             <label>
               Mouse spring
               <input id="dragStrengthInput" type="range" min="0.02" max="1" step="0.01">
-              <span>How tightly a dragged atom follows the cursor in constraint mode. 1 is pinned.</span>
+              <span>How tightly a dragged atom follows the cursor in position mode. 1 is pinned.</span>
             </label>
             <label>
               Mouse stiffness
               <input id="mouseStiffnessInput" type="range" min="0" max="8" step="0.1">
-              <span>Spring-mode force pulling a dragged atom toward the cursor.</span>
+              <span>Force-mode spring pulling a dragged atom toward the cursor.</span>
             </label>
             <label>
               Mouse damping
               <input id="mouseDampingInput" type="range" min="0" max="4" step="0.05">
-              <span>Spring-mode damping applied to the dragged atom. Higher values reduce release wobble.</span>
+              <span>Force-mode damping applied to the dragged atom. Higher values reduce release wobble.</span>
             </label>
             <label class="checkbox-control">
               <input id="collisionEnabledInput" type="checkbox">
@@ -171,6 +171,11 @@
               Collision stiffness
               <input id="collisionStiffnessInput" type="range" min="0" max="1" step="0.01">
               <span>How strongly overlaps are corrected each pass. Higher values separate faster but can feel stiffer.</span>
+            </label>
+            <label>
+              Collision damping
+              <input id="collisionDampingInput" type="range" min="0" max="1" step="0.01">
+              <span>Reduces closing velocity during collision correction. Higher values calm jitter; lower values preserve bounce.</span>
             </label>
             <label>
               Collision passes
@@ -215,7 +220,7 @@
             <label>
               Iterations
               <input id="iterationsInput" type="number" min="1" max="20" step="1">
-              <span>Substeps in spring mode, constraint solve passes in projection mode. More is stabler and slower.</span>
+              <span>Substeps in force mode, constraint solve passes in position mode. More is stabler and slower.</span>
             </label>
             <label>
               Physics rate
@@ -534,30 +539,31 @@
     </aside>
   </main>
 
-  <script src="./src/config.js?v=20260705af"></script>
-  <script src="./src/math/vec3.js?v=20260705af"></script>
-  <script src="./src/math/camera.js?v=20260705af"></script>
-  <script src="./src/math/projection.js?v=20260705af"></script>
-  <script src="./src/simulation/Atom.js?v=20260705af"></script>
-  <script src="./src/simulation/Bond.js?v=20260705af"></script>
-  <script src="./src/simulation/BendingConstraint.js?v=20260705af"></script>
-  <script src="./src/simulation/Lattice.js?v=20260705af"></script>
-  <script src="./src/simulation/WindField.js?v=20260705af"></script>
-  <script src="./src/physics/PhysicsWorld.js?v=20260705af"></script>
-  <script src="./src/physics/Forces.js?v=20260705af"></script>
-  <script src="./src/physics/Constraints.js?v=20260705af"></script>
-  <script src="./src/physics/Collisions.js?v=20260705af"></script>
-  <script src="./src/simulation/VerletSolver.js?v=20260705af"></script>
-  <script src="./src/simulation/EnergyModel.js?v=20260705af"></script>
-  <script src="./src/simulation/Diagnostics.js?v=20260705af"></script>
-  <script src="./src/rendering/DrawStyle.js?v=20260705af"></script>
-  <script src="./src/rendering/WebGLSurfaceRenderer.js?v=20260705af"></script>
-  <script src="./src/rendering/CanvasRenderer.js?v=20260705af"></script>
-  <script src="./src/input/PointerController.js?v=20260705af"></script>
-  <script src="./src/input/OrbitController.js?v=20260705af"></script>
-  <script src="./src/input/DragController.js?v=20260705af"></script>
-  <script src="./src/input/PinEditController.js?v=20260705af"></script>
-  <script src="./src/ui/ControlPanel.js?v=20260705af"></script>
-  <script src="./src/main.js?v=20260705af"></script>
+  <script src="./src/config.js?v=20260705ak"></script>
+  <script src="./src/math/vec3.js?v=20260705ak"></script>
+  <script src="./src/math/camera.js?v=20260705ak"></script>
+  <script src="./src/math/projection.js?v=20260705ak"></script>
+  <script src="./src/simulation/Atom.js?v=20260705ak"></script>
+  <script src="./src/simulation/Bond.js?v=20260705ak"></script>
+  <script src="./src/simulation/BendingConstraint.js?v=20260705ak"></script>
+  <script src="./src/simulation/Lattice.js?v=20260705ak"></script>
+  <script src="./src/simulation/WindField.js?v=20260705ak"></script>
+  <script src="./src/physics/PhysicsWorld.js?v=20260705ak"></script>
+  <script src="./src/physics/SolverMode.js?v=20260705ak"></script>
+  <script src="./src/physics/Forces.js?v=20260705ak"></script>
+  <script src="./src/physics/Constraints.js?v=20260705ak"></script>
+  <script src="./src/physics/Collisions.js?v=20260705ak"></script>
+  <script src="./src/simulation/VerletSolver.js?v=20260705ak"></script>
+  <script src="./src/simulation/EnergyModel.js?v=20260705ak"></script>
+  <script src="./src/simulation/Diagnostics.js?v=20260705ak"></script>
+  <script src="./src/rendering/DrawStyle.js?v=20260705ak"></script>
+  <script src="./src/rendering/WebGLSurfaceRenderer.js?v=20260705ak"></script>
+  <script src="./src/rendering/CanvasRenderer.js?v=20260705ak"></script>
+  <script src="./src/input/PointerController.js?v=20260705ak"></script>
+  <script src="./src/input/OrbitController.js?v=20260705ak"></script>
+  <script src="./src/input/DragController.js?v=20260705ak"></script>
+  <script src="./src/input/PinEditController.js?v=20260705ak"></script>
+  <script src="./src/ui/ControlPanel.js?v=20260705ak"></script>
+  <script src="./src/main.js?v=20260705ak"></script>
 </body>
 </html>

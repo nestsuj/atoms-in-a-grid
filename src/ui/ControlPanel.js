@@ -27,6 +27,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       collisionEnabled: "collisionEnabledInput",
       collisionRadiusScale: "collisionRadiusScaleInput",
       collisionStiffness: "collisionStiffnessInput",
+      collisionDamping: "collisionDampingInput",
       collisionPasses: "collisionPassesInput",
       allowCornerPinEditing: "allowCornerPinEditingInput",
       gravityEnabled: "gravityEnabledInput",
@@ -126,7 +127,7 @@ window.Atoms.ControlPanel = class ControlPanel {
           document.getElementById(this.ids.windProfile).value = "custom";
         }
 
-        if (["collisionEnabled", "collisionRadiusScale", "collisionStiffness", "collisionPasses"].includes(key)) {
+        if (["collisionEnabled", "collisionRadiusScale", "collisionStiffness", "collisionDamping", "collisionPasses"].includes(key)) {
           this.setOptionalSelectValue("collisionPresetInput", "custom");
         }
 
@@ -224,6 +225,7 @@ window.Atoms.ControlPanel = class ControlPanel {
       mouseDamping: (value) => `${decimal(2)(value)} damping`,
       collisionRadiusScale: (value) => `${decimal(2)(value)} x atom radius`,
       collisionStiffness: percent,
+      collisionDamping: percent,
       collisionPasses: (value) => `${Math.round(Number(value))} pass${Math.round(Number(value)) === 1 ? "" : "es"}`,
       gravityStrength: (value) => `${decimal(2)(value)} g`,
       windStrength: (value) => `${decimal(2)(value)} force`,
@@ -369,6 +371,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.collisionEnabled = clothLike;
     this.config.collisionRadiusScale = clothLike ? 1.35 : 1.6;
     this.config.collisionStiffness = clothLike ? 0.45 : 0.65;
+    this.config.collisionDamping = clothLike ? 0.45 : 0.35;
     this.config.collisionPasses = clothLike ? 2 : 1;
     this.config.scenePreset = "custom";
     this.setOptionalSelectValue("collisionPresetInput", clothLike ? "cloth" : "off");
@@ -382,18 +385,21 @@ window.Atoms.ControlPanel = class ControlPanel {
         collisionEnabled: false,
         collisionRadiusScale: 1.35,
         collisionStiffness: 0.45,
+        collisionDamping: 0.35,
         collisionPasses: 1,
       },
       cloth: {
         collisionEnabled: true,
         collisionRadiusScale: 1.35,
         collisionStiffness: 0.45,
+        collisionDamping: 0.45,
         collisionPasses: 2,
       },
       robust: {
         collisionEnabled: true,
         collisionRadiusScale: 1.5,
         collisionStiffness: 0.6,
+        collisionDamping: 0.65,
         collisionPasses: 4,
       },
     };
@@ -611,6 +617,8 @@ window.Atoms.ControlPanel = class ControlPanel {
       const input = document.getElementById(id);
       if (input.type === "checkbox") {
         input.checked = Boolean(this.config[key]);
+      } else if (key === "physicsMode") {
+        input.value = window.Atoms.SolverMode.normalize(this.config[key]);
       } else {
         input.value = this.config[key];
       }
@@ -634,6 +642,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     if (
       this.config.collisionRadiusScale === 1.35
       && this.config.collisionStiffness === 0.45
+      && this.config.collisionDamping === 0.45
       && this.config.collisionPasses === 2
     ) {
       return "cloth";
@@ -641,6 +650,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     if (
       this.config.collisionRadiusScale === 1.5
       && this.config.collisionStiffness === 0.6
+      && this.config.collisionDamping === 0.65
       && this.config.collisionPasses === 4
     ) {
       return "robust";
@@ -669,7 +679,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.atomRadius = window.Atoms.readNumber(document.getElementById(this.ids.atomRadius).value, this.config.atomRadius, 3, 18);
     this.config.scenePreset = document.getElementById(this.ids.scenePreset).value;
     this.config.material = document.getElementById(this.ids.material).value;
-    this.config.physicsMode = document.getElementById(this.ids.physicsMode).value;
+    this.config.physicsMode = window.Atoms.SolverMode.normalize(document.getElementById(this.ids.physicsMode).value);
     this.config.stiffness = window.Atoms.readNumber(document.getElementById(this.ids.stiffness).value, this.config.stiffness, 0.02, 1);
     this.config.shearStiffness = window.Atoms.readNumber(document.getElementById(this.ids.shearStiffness).value, this.config.shearStiffness, 0, 1);
     this.config.springDamping = window.Atoms.readNumber(document.getElementById(this.ids.springDamping).value, this.config.springDamping, 0, 0.8);
@@ -684,6 +694,7 @@ window.Atoms.ControlPanel = class ControlPanel {
     this.config.collisionEnabled = document.getElementById(this.ids.collisionEnabled).checked;
     this.config.collisionRadiusScale = window.Atoms.readNumber(document.getElementById(this.ids.collisionRadiusScale).value, this.config.collisionRadiusScale, 0.5, 4);
     this.config.collisionStiffness = window.Atoms.readNumber(document.getElementById(this.ids.collisionStiffness).value, this.config.collisionStiffness, 0, 1);
+    this.config.collisionDamping = window.Atoms.readNumber(document.getElementById(this.ids.collisionDamping).value, this.config.collisionDamping, 0, 1);
     this.config.collisionPasses = Math.round(window.Atoms.readNumber(document.getElementById(this.ids.collisionPasses).value, this.config.collisionPasses, 1, 6));
     this.config.allowCornerPinEditing = document.getElementById(this.ids.allowCornerPinEditing).checked;
     this.config.gravityEnabled = document.getElementById(this.ids.gravityEnabled).checked;

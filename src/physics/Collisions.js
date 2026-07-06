@@ -91,6 +91,8 @@ window.Atoms.ParticleCollisionSolver = class ParticleCollisionSolver {
     const normalX = deltaX / distance;
     const normalY = deltaY / distance;
     const normalZ = deltaZ / distance;
+    const aVelocity = world.velocity(a);
+    const bVelocity = world.velocity(b);
     const stats = world.solver.collisionStats;
     stats.corrections += 1;
     stats.maxCorrection = Math.max(stats.maxCorrection, overlap);
@@ -114,6 +116,53 @@ window.Atoms.ParticleCollisionSolver = class ParticleCollisionSolver {
       b.position.y += normalY * overlap;
       b.position.z += normalZ * overlap;
     }
+
+    this.applyVelocityResponse(world, a, b, normalX, normalY, normalZ, aLocked, bLocked, aVelocity, bVelocity);
+  }
+
+  applyVelocityResponse(world, a, b, normalX, normalY, normalZ, aLocked, bLocked, aVelocity, bVelocity) {
+    const damping = Math.max(0, Math.min(1, world.solver.collisionDamping || 0));
+    if (aLocked && bLocked) {
+      return;
+    }
+
+    const relativeNormalSpeed = (
+      (bVelocity.x - aVelocity.x) * normalX
+      + (bVelocity.y - aVelocity.y) * normalY
+      + (bVelocity.z - aVelocity.z) * normalZ
+    );
+
+    if (relativeNormalSpeed < 0 && damping > 0) {
+      const velocityCorrection = -relativeNormalSpeed * damping;
+      const aShare = aLocked ? 0 : (bLocked ? 1 : 0.5);
+      const bShare = bLocked ? 0 : (aLocked ? 1 : 0.5);
+
+      if (!aLocked) {
+        aVelocity.x -= normalX * velocityCorrection * aShare;
+        aVelocity.y -= normalY * velocityCorrection * aShare;
+        aVelocity.z -= normalZ * velocityCorrection * aShare;
+      }
+
+      if (!bLocked) {
+        bVelocity.x += normalX * velocityCorrection * bShare;
+        bVelocity.y += normalY * velocityCorrection * bShare;
+        bVelocity.z += normalZ * velocityCorrection * bShare;
+      }
+    }
+
+    if (!aLocked) {
+      this.setVelocity(a, aVelocity);
+    }
+
+    if (!bLocked) {
+      this.setVelocity(b, bVelocity);
+    }
+  }
+
+  setVelocity(atom, velocity) {
+    atom.previousPosition.x = atom.position.x - velocity.x;
+    atom.previousPosition.y = atom.position.y - velocity.y;
+    atom.previousPosition.z = atom.position.z - velocity.z;
   }
 
   excludedPairs(lattice) {
@@ -298,6 +347,12 @@ window.Atoms.ClothSelfCollisionSolver = class ClothSelfCollisionSolver {
       { atom: b, weight: bary.v },
       { atom: c, weight: bary.w },
     ];
+    const atomVelocity = world.velocity(atom);
+    const triangleVelocities = weights.map((entry) => ({
+      atom: entry.atom,
+      weight: entry.weight,
+      velocity: world.velocity(entry.atom),
+    }));
     const movableTriangleWeight = weights.reduce((total, entry) => (
       world.isLocked(entry.atom) ? total : total + Math.max(0, entry.weight)
     ), 0);
@@ -334,5 +389,84 @@ window.Atoms.ClothSelfCollisionSolver = class ClothSelfCollisionSolver {
 
     stats.corrections += 1;
     stats.maxCorrection = Math.max(stats.maxCorrection, correctionLength);
+    this.applyVelocityResponse(world, atom, atomVelocity, triangleVelocities, normal, correction, atomShare, triangleShare);
+  }
+
+  applyVelocityResponse(world, atom, atomVelocity, triangleVelocities, normal, correction, atomShare, triangleShare) {
+    const atomLocked = world.isLocked(atom);
+    const damping = Math.max(0, Math.min(1, world.solver.collisionDamping || 0));
+    const surfaceVelocity = this.weightedSurfaceVelocity(triangleVelocities);
+    const relativeNormalSpeed = (
+      (atomVelocity.x - surfaceVelocity.x) * normal.x
+      + (atomVelocity.y - surfaceVelocity.y) * normal.y
+      + (atomVelocity.z - surfaceVelocity.z) * normal.z
+    );
+    const correctionSide = correction >= 0 ? 1 : -1;
+    const closingSpeed = -relativeNormalSpeed * correctionSide;
+
+    if (closingSpeed > 0 && damping > 0) {
+      const relativeCorrection = -relativeNormalSpeed * damping;
+
+      if (!atomLocked) {
+        atomVelocity.x += normal.x * relativeCorrection * atomShare;
+        atomVelocity.y += normal.y * relativeCorrection * atomShare;
+        atomVelocity.z += normal.z * relativeCorrection * atomShare;
+      }
+
+      this.applyTriangleVelocityCorrection(world, triangleVelocities, normal, relativeCorrection, triangleShare);
+    }
+
+    if (!atomLocked) {
+      this.setVelocity(atom, atomVelocity);
+    }
+
+    for (const entry of triangleVelocities) {
+      if (!world.isLocked(entry.atom)) {
+        this.setVelocity(entry.atom, entry.velocity);
+      }
+    }
+  }
+
+  weightedSurfaceVelocity(triangleVelocities) {
+    const velocity = { x: 0, y: 0, z: 0 };
+
+    for (const entry of triangleVelocities) {
+      velocity.x += entry.velocity.x * entry.weight;
+      velocity.y += entry.velocity.y * entry.weight;
+      velocity.z += entry.velocity.z * entry.weight;
+    }
+
+    return velocity;
+  }
+
+  applyTriangleVelocityCorrection(world, triangleVelocities, normal, relativeCorrection, triangleShare) {
+    if (triangleShare <= 0) {
+      return;
+    }
+
+    const movableWeight = triangleVelocities.reduce((total, entry) => (
+      world.isLocked(entry.atom) ? total : total + Math.max(0, entry.weight)
+    ), 0);
+
+    if (movableWeight <= 0) {
+      return;
+    }
+
+    for (const entry of triangleVelocities) {
+      if (world.isLocked(entry.atom)) {
+        continue;
+      }
+
+      const share = triangleShare * Math.max(0, entry.weight) / movableWeight;
+      entry.velocity.x -= normal.x * relativeCorrection * share;
+      entry.velocity.y -= normal.y * relativeCorrection * share;
+      entry.velocity.z -= normal.z * relativeCorrection * share;
+    }
+  }
+
+  setVelocity(atom, velocity) {
+    atom.previousPosition.x = atom.position.x - velocity.x;
+    atom.previousPosition.y = atom.position.y - velocity.y;
+    atom.previousPosition.z = atom.position.z - velocity.z;
   }
 };
